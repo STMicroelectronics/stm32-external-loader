@@ -1,7 +1,7 @@
 
 /* USER CODE BEGIN 0 */
 static uint8_t QSPI_WriteEnable(void);
-static uint8_t QSPI_AutoPollingMemReady(void);
+static uint8_t QSPI_AutoPollingMemReady(uint32_t tout);
 static uint8_t QSPI_Configuration(void);
 static uint8_t QSPI_ResetChip(void);
 /* USER CODE END 0 */
@@ -24,7 +24,7 @@ uint8_t CSP_QUADSPI_Init(void) {
 
 	HAL_Delay(1);
 
-	if (QSPI_AutoPollingMemReady() != HAL_OK) {
+	if (QSPI_AutoPollingMemReady(HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
 		return HAL_ERROR;
 	}
 
@@ -69,14 +69,14 @@ uint8_t CSP_QSPI_Erase_Chip(void) {
 		return HAL_ERROR;
 	}
 
-	if (QSPI_AutoPollingMemReady() != HAL_OK) {
+	if (QSPI_AutoPollingMemReady(QUADSPI_MAX_ERASE_TIMEOUT) != HAL_OK) {
 				return HAL_ERROR;
 			}
 
 	return HAL_OK;
 }
 
-uint8_t QSPI_AutoPollingMemReady(void) {
+uint8_t QSPI_AutoPollingMemReady(uint32_t tout) {
 
 	QSPI_CommandTypeDef sCommand;
 	 QSPI_AutoPollingTypeDef sConfig;
@@ -99,8 +99,7 @@ uint8_t QSPI_AutoPollingMemReady(void) {
 	sConfig.Interval = 0x10;
 	sConfig.AutomaticStop = QSPI_AUTOMATIC_STOP_ENABLE;
 
-	if (HAL_QSPI_AutoPolling(&hqspi, &sCommand, &sConfig,
-	HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
+	if (HAL_QSPI_AutoPolling(&hqspi, &sCommand, &sConfig, tout) != HAL_OK) {
 		return HAL_ERROR;
 	}
 
@@ -253,7 +252,7 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 		}
 		EraseStartAddress += MEMORY_SECTOR_SIZE;
 
-		if (QSPI_AutoPollingMemReady() != HAL_OK) {
+		if (QSPI_AutoPollingMemReady(HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
 			return HAL_ERROR;
 		}
 	}
@@ -326,7 +325,7 @@ uint8_t CSP_QSPI_WriteMemory(uint8_t* buffer, uint32_t address,uint32_t buffer_s
 		}
 
 		/* Configure automatic polling mode to wait for end of program */
-		if (QSPI_AutoPollingMemReady() != HAL_OK) {
+		if (QSPI_AutoPollingMemReady(HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
 			return HAL_ERROR;
 		}
 

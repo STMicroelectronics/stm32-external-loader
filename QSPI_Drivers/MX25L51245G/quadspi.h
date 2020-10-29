@@ -35,4 +35,7 @@ uint8_t CSP_QSPI_Erase_Chip (void);
 #define RESET_EXECUTE_CMD 0x99
 #define DISABLE_QIP_MODE 0xf5
 
+/*MT25QL512 timeouts*/
+#define QUADSPI_MAX_ERASE_TIMEOUT 500000 /* 500s max */
+
 /* USER CODE END Prototypes */

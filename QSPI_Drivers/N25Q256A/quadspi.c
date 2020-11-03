@@ -13,6 +13,7 @@ static uint8_t QSPI_ResetChip(void);
 uint8_t
 CSP_QUADSPI_Init(void) {
     //prepare QSPI peripheral for ST-Link Utility operations
+	hqspi.Instance = QUADSPI;
     if (HAL_QSPI_DeInit(&hqspi) != HAL_OK) {
         return HAL_ERROR;
     }

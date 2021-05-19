@@ -27,11 +27,11 @@ __root struct StorageInfo const StorageInfo  =  {
 #else
 struct StorageInfo const StorageInfo  =  {
 #endif
-   "MT25TL01G_STM32H743I-EVAL", 	 		// Device Name + EVAL Board name
+   "MT25TL01G_STM32H743I-EVAL", 	 		                // Device Name + EVAL Board name
    NOR_FLASH,                   					// Device Type
    0x90000000,                						// Device Start Address
    0x08000000,                 						// Device Size in 128 MBytes
-   0x100,                    						  // Programming Page Size 256Bytes
+   0x100,                    						// Programming Page Size 256Bytes
    0xFF,                       						// Initial Content of Erased Memory
 // Specify Size and Address of Sectors (view example below)
    0x00000400, 0x00020000,     				 		// Sector Num : 1024 ,Sector Size: 128 KBytes

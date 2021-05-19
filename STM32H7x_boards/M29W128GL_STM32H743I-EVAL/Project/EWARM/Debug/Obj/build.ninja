@@ -1,0 +1,46 @@
+#Generating source browse information for project M29W128GL_STM32H743I-EVAL
+
+
+#Abbreviations
+cc = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\SourceIndexer.exe
+ll = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\PbdLink.exe
+bd = C$:\Program$ Files$ (x86)\IAR$ Systems\Embedded$ Workbench$ 8.4\common\bin\makeBrowseData.exe
+
+
+
+#Rules
+rule index
+  depfile = $out.dep
+  command = $cc -out=$out -f $in
+rule link
+  command = $ll -M $out $in
+rule browsedata
+  command = $bd $in -output  $out
+
+
+
+#Build steps
+build STM32H7FMC.pbi : index STM32H7FMC.xcl
+build stm32h7xx_hal.pbi : index stm32h7xx_hal.xcl
+build stm32h7xx_hal_cortex.pbi : index stm32h7xx_hal_cortex.xcl
+build stm32h7xx_hal_gpio.pbi : index stm32h7xx_hal_gpio.xcl
+build stm32h7xx_hal_msp.pbi : index stm32h7xx_hal_msp.xcl
+build stm32h7xx_hal_nor.pbi : index stm32h7xx_hal_nor.xcl
+build stm32h7xx_hal_pwr.pbi : index stm32h7xx_hal_pwr.xcl
+build stm32h7xx_hal_pwr_ex.pbi : index stm32h7xx_hal_pwr_ex.xcl
+build stm32h7xx_hal_rcc.pbi : index stm32h7xx_hal_rcc.xcl
+build stm32h7xx_hal_rcc_ex.pbi : index stm32h7xx_hal_rcc_ex.xcl
+build stm32h7xx_it.pbi : index stm32h7xx_it.xcl
+build stm32h7xx_ll_fmc.pbi : index stm32h7xx_ll_fmc.xcl
+build stm32h7xxfmc.pbi : index stm32h7xxfmc.xcl
+build system_stm32h7xx.pbi : index system_stm32h7xx.xcl
+build Dev_Inf.pbi : index Dev_Inf.xcl
+build Loader_Src.pbi : index Loader_Src.xcl
+build M29W128GL_STM32H743I-EVAL_part0.pbi : link STM32H7FMC.pbi stm32h7xx_hal.pbi stm32h7xx_hal_cortex.pbi stm32h7xx_hal_gpio.pbi
+build M29W128GL_STM32H743I-EVAL_part1.pbi : link stm32h7xx_hal_msp.pbi stm32h7xx_hal_nor.pbi stm32h7xx_hal_pwr.pbi stm32h7xx_hal_pwr_ex.pbi
+build M29W128GL_STM32H743I-EVAL_part2.pbi : link stm32h7xx_hal_rcc.pbi stm32h7xx_hal_rcc_ex.pbi stm32h7xx_it.pbi stm32h7xx_ll_fmc.pbi
+build M29W128GL_STM32H743I-EVAL_part3.pbi : link stm32h7xxfmc.pbi system_stm32h7xx.pbi Dev_Inf.pbi Loader_Src.pbi
+build M29W128GL_STM32H743I-EVAL.pbd : link M29W128GL_STM32H743I-EVAL_part0.pbi M29W128GL_STM32H743I-EVAL_part1.pbi M29W128GL_STM32H743I-EVAL_part2.pbi M29W128GL_STM32H743I-EVAL_part3.pbi
+build M29W128GL_STM32H743I-EVAL.pbw : browsedata M29W128GL_STM32H743I-EVAL.pbd
+
+

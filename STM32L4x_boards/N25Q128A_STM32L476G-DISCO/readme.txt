@@ -58,7 +58,7 @@ In order to make the program work, you must do the following :
  - The N25Q128A_STM32L476G-DISCO.stldr is generated at Project/EWARM and ready to be used 
     within STM32CubeProgrammer by copying it at [STM32CubeProgrammer_ Install directory]\bin\ExternalLoader
  - Open STM32CubeProgrammer and click on connect
- - Go to external loaders menu then select N25Q128A_STM32L476G-DISCO to program external OSPI memory
+ - Go to external loaders menu then select N25Q128A_STM32L476G-DISCO to program external QSPI memory
  - From Erasing and programming Menu browse to select the hex file then click on start programming
 
 

@@ -71,7 +71,7 @@ CSP_QSPI_Erase_Chip(void) {
         return HAL_ERROR;
     }
 
-    if (QSPI_AutoPollingMemReady(HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
+    if (QSPI_AutoPollingMemReady(W25Q256JW_BULK_ERASE_MAX_TIME) != HAL_OK) {
         return HAL_ERROR;
     }
 

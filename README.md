@@ -1,31 +1,31 @@
-# External Loaders
+# Introduction
 
-This is **contrib** branch of external loaders repository and includes contributions from community or special set of memory drivers for STM32.
-Code on this branch is open-source and is tightly-coupled with our set of videos about development of external loaders.
+This repository contains the Flashloaders source code of external memories embedded in STM32 HW boards.
+* The branch **master** provides the Flashloaders projects and source files as it's integrated in STM32CubeProgrammer tool.
+* The branch **contrib** helps you to integrate the external memory to your Embedded system driven by STM32.
 
-## Add external memory support to your project
 
-We have prepared set of videos about development of customized external loaders.
-It provides you an overview about external loader concept and communication flow.
-More information and detailed concept is available on dedicated website.
+# External memories
 
-https://www.st.com/content/st_com/en/support/learning/stm32-education/stm32-moocs/external_QSPI_loader.html
+External memories are available on many STM32 HW board like the evaluation and discovery boards. It can be a Flash or SRAM and it provides higher storage capabilities. The STM32 boards supports many types of external memories such us Micron, Winbond that are connected to the mcu through different interfaces like FMC, SPI..
 
-## Contrib folder structure
 
-We have prepared set of different folders for easier understanding of the complete package
+# Package structure
 
-- **Loader_Files** folder contains files needed for STM32 external loader design. It provides set of files and functions to interface external loader together with hardware debugger
-- **QSPI driver** folder contains memory drivers for specific sales types. This is where actual driver and its linked GPIO configuration for STM32 is prepared.
-- **QSPI testing** folder includes routines for memory testing. Part of code that can be used during memory test procedure to verify communication between STM32 and memory is up and properly running.
-- **Demo_Project** folder contains demonstration project used with video tutorials as per link above. It can be directly opened with [STM32CubeIDE](https://www.st.com/en/development-tools/stm32cubeide.html) development studio.
+The flashloader project is built with EWARM or MDK-ARM IDE and comes with the corresponding source, header and linker files:
 
-> To fully understand flow and usage of the above folders with dedicated files, please follow set of videos that we have prepared and published on link above.
+* Library : source/headers files providing required drivers to manage read, write erase functionalities of the supported memory that are required to implement the initialization, erase and write functions needed by the flashloader.
 
-## Contribution
+* Loader  : source/headers files containing specific information related to the supported memory (name, size…) and functions required by the flashloader
 
-We accept and encourage everyone to contribute with different set of loader or memory drivers. We do accept pull requests on **contrib** branch.
+* Project : contains a preconfigured project with the associated linker file
 
-## STM32 board loaders
 
-Loaders for our STM32 development boards are available in this repository, under **main** branch.
+# How to adapt the flashloader project for a customized board
+
+The required steps to build a customized loader for cube programmer are vailable at this [link](https://www.st.com/content/ccc/resource/technical/document/user_manual/e6/10/d8/80/d6/1d/4a/f2/CD00262073.pdf/files/CD00262073.pdf/jcr:content/translations/en.CD00262073.pdf) (Section 3.9).
+
+# Contribution
+
+We propose and accept contribution from community for new loaders and drivers only on **contrib** branch. This branch, **master**, includes original external loaders for STM32 development boards.
+

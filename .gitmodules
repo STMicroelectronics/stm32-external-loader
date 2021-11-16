@@ -1,0 +1,16 @@
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/STM32L4xx_HAL_Driver"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/STM32L4xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32l4xx_hal_driver.git
+	branch = master
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/CMSIS/Device/ST/STM32L4xx"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/CMSIS/Device/ST/STM32L4xx
+	url = https://github.com/STMicroelectronics/cmsis_device_l4.git
+	branch = master
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/STM32L496G-Discovery"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/STM32L496G-Discovery
+	url = https://github.com/STMicroelectronics/32l496gdiscovery.git
+	branch = main
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/Components/mx25r6435f"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/Components/mx25r6435f
+	url = https://github.com/STMicroelectronics/stm32-mx25r6435f.git
+	branch = main

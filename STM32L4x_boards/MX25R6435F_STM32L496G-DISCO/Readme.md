@@ -26,10 +26,10 @@ The MX25R6435F_STM32L496G-DISCO.stldr has been successfully tested on STM32CubeP
 In order to make the program work, you must do the following :
  - Open the project under Project/EWARM.
  - Rebuild all files.
- - The X25R6435F_STM32L496G-DISCO.stldr is generated at Project/EWARM and ready to be used 
+ - The MX25R6435F_STM32L496G-DISCO.stldr is generated at Project/EWARM and ready to be used 
     within STM32CubeProgrammer by copying it at [STM32CubeProgrammer_ Install directory]\bin\ExternalLoader.
  - Open STM32CubeProgrammer and click on connect.
- - Go to external loaders menu then select X25R6435F_STM32L496G-DISCO to program external QSPI memory.
+ - Go to external loaders menu then select MX25R6435F_STM32L496G-DISCO to program external QSPI memory.
  - From Erasing and programming Menu browse to select the hex file then click on start programming.
 
 If you want to clone a repository including its submodules you can use the --recursive parameter.

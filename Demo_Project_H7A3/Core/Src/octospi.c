@@ -48,7 +48,7 @@ void MX_OCTOSPI1_Init(void)
   hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
   hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;
   hospi1.Init.WrapSize = HAL_OSPI_WRAP_NOT_SUPPORTED;
-  hospi1.Init.ClockPrescaler = 1;
+  hospi1.Init.ClockPrescaler = 4;
   hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_NONE;
   hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_DISABLE;
   hospi1.Init.ChipSelectBoundary = 0;
@@ -225,5 +225,28 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+uint8_t CSP_QUADSPI_Init(void)
+{
+	return HAL_ERROR;
+}
+
+uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress ,uint32_t EraseEndAddress)
+{
+	return HAL_ERROR;
+}
+
+uint8_t CSP_QSPI_WriteMemory(uint8_t* buffer, uint32_t address, uint32_t buffer_size)
+{
+	return HAL_ERROR;
+}
+
+uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
+{
+	return HAL_ERROR;
+}
+
+uint8_t CSP_QSPI_Erase_Chip (void);
+
 
 /* USER CODE END 1 */

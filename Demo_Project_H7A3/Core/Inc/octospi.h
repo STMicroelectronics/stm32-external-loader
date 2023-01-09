@@ -32,7 +32,7 @@ extern "C" {
 
 /* USER CODE END Includes */
 
-
+extern OSPI_HandleTypeDef hospi1;
 
 /* USER CODE BEGIN Private defines */
 
@@ -41,6 +41,8 @@ extern "C" {
 #define MEMORY_BLOCK_SIZE	(64UL << 10)   	// 512 sectors of 64KiB
 #define MEMORY_SECTOR_SIZE	(4UL << 10)   	// 8192 subsectors of 4KiB
 #define MEMORY_PAGE_SIZE	256     		// 131072 pages of 256B
+
+#define SECTORS_COUNT (MEMORY_FLASH_SIZE / MEMORY_SECTOR_SIZE)
 
 
 //MT25TL256 commands

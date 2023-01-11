@@ -59,6 +59,7 @@ extern OSPI_HandleTypeDef hospi1;
 #define DISABLE_QIP_MODE 0xf5 				// RESET QUAD INPUT/OUTPUT MODE
 #define RESET_ENABLE_CMD 0x66 				// RESET ENABLE
 #define RESET_EXECUTE_CMD 0x99 				// RESET MEMORY
+#define READ_ID_CMD 0x9E
 
 
 #define DUMMY_CLOCK_CYCLES_READ_QUAD 10  // which one is this? sometimes 0,4,8 or 10

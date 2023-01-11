@@ -462,7 +462,7 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 {
 	OSPI_RegularCmdTypeDef sCommand = {};
 
-	EraseStartAddress &= (MEMORY_SECTOR_SIZE -1);
+	EraseStartAddress &= (MEMORY_DUAL_SECTOR_SIZE -1);
 
 	/* Erasing Sequence -------------------------------------------------- */
 
@@ -511,27 +511,19 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t buffer_size)
 {
 	OSPI_RegularCmdTypeDef sCommand = {};
-	uint32_t end_addr, current_size, current_addr;
+	uint32_t current_size; //number of bytes to write in current operation
+	uint32_t current_addr; //start address to write to in current operation
+	uint32_t bytesRemainingInPage;
 
 	//todo check size in command since half the data goes to one die and half the data goes to the other die
 
-	/* Calculation of the size between the write address and the end of the page */
-	// todo improve this algoritm
-	current_addr = 0;
-	while (current_addr <= address) {
-		current_addr += MEMORY_PAGE_SIZE*2;
-	}
-	current_size = current_addr - address;
+	current_addr = address;
 
-
-	/* Check if the size of the data is less than the remaining place in the page */
-	if (current_size > buffer_size) {
-		current_size = buffer_size;
-	}
+	bytesRemainingInPage = MEMORY_DUAL_PAGE_SIZE - (current_addr % MEMORY_DUAL_PAGE_SIZE);
+	current_size = (buffer_size > bytesRemainingInPage) ? bytesRemainingInPage : buffer_size;
 
 	/* Initialize the address variables */
-	current_addr = address;
-	end_addr = address + buffer_size;
+
 
 	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
 	sCommand.FlashId = 0; //only applies if Dualquad is disabled
@@ -548,7 +540,7 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 	sCommand.AlternateBytesSize = 0;
 	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
 	sCommand.DataMode = HAL_OSPI_DATA_4_LINES;
-	sCommand.NbData = buffer_size / 2; //todo check size
+	sCommand.NbData = current_size;
 	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
 	sCommand.DummyCycles = 0;
 	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
@@ -586,11 +578,14 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 		}
 
 		/* Update the address and size variables for next page programming */
+		buffer_size -= current_size;
 		current_addr += current_size;
 		buffer += current_size;
-		current_size =	((current_addr + MEMORY_PAGE_SIZE*2) > end_addr) ?
-						(end_addr - current_addr) : MEMORY_PAGE_SIZE*2;
-	} while (current_addr <= end_addr);
+
+		bytesRemainingInPage = MEMORY_DUAL_PAGE_SIZE - (current_addr % MEMORY_DUAL_PAGE_SIZE);
+		current_size = (buffer_size > bytesRemainingInPage) ? bytesRemainingInPage : buffer_size;
+
+	} while (buffer_size);
 
 	return HAL_OK;
 }

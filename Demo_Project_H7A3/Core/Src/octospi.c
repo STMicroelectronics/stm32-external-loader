@@ -256,11 +256,15 @@ uint8_t CSP_QUADSPI_Init(void) {
 
 	MX_OCTOSPI1_Init();
 
-	QSPI_ReadChipId();
 
-//	if (QSPI_ResetChip() != HAL_OK) {
-//		return HAL_ERROR;
-//	}
+
+	if (QSPI_ResetChip() != HAL_OK) {
+		return HAL_ERROR;
+	}
+
+	HAL_Delay(1); // todo remove magic number
+
+	QSPI_ReadChipId();
 //
 //	HAL_Delay(1);
 //
@@ -612,58 +616,13 @@ static uint8_t QSPI_ResetChip()
 {
 	OSPI_RegularCmdTypeDef sCommand = {};
 	uint32_t temp = 0;
+	HAL_StatusTypeDef res = HAL_OK;
+	OspiErrorCodeType errorCode = {0};
 	/* Erasing Sequence -------------------------------------------------- */
 
 	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
 	sCommand.FlashId = 0; //only applies if Dualquad is disabled
 	sCommand.Instruction = RESET_ENABLE_CMD;
-	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
-	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
-	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	sCommand.Address = 0;
-	sCommand.AddressMode = HAL_OSPI_ADDRESS_1_LINE;
-	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
-	sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
-	sCommand.AlternateBytes = 0;
-	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
-	sCommand.AlternateBytesSize = 0;
-	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
-	sCommand.NbData = 0;
-	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.DummyCycles = 0;
-	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
-	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
-
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-	for (temp = 0; temp < 0x2f; temp++) {
-		__NOP();
-	}
-
-	sCommand.Instruction = RESET_EXECUTE_CMD;
-
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-	return HAL_OK;
-}
-
-
-
-static uint8_t QSPI_ReadChipId(void)
-{
-	OSPI_RegularCmdTypeDef sCommand = {};
-	uint8_t test_buffer[3*2] = { 0 };
-	HAL_StatusTypeDef res = HAL_OK;
-	OspiErrorCodeType errorCode = {0};
-
-	/*read status register*/
-
-	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
-	sCommand.FlashId = 0; //only applies if Dualquad is disabled
-	sCommand.Instruction = READ_ID_CMD;
 	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
 	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
@@ -675,22 +634,91 @@ static uint8_t QSPI_ReadChipId(void)
 	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
 	sCommand.AlternateBytesSize = 0;
 	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
-	sCommand.NbData = 3;//how many bytes?
+	sCommand.DataMode = HAL_OSPI_DATA_NONE;
+	sCommand.NbData = 0;
 	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.DummyCycles = 0;//3*8;
+	sCommand.DummyCycles = 0;
 	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
 	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
 
+
 	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 
-	if (res == HAL_OK) {
-		res = HAL_OSPI_Receive(&hospi1, test_buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	if (res == HAL_OK)
+	{
+		//delay
+		//todo remove magic number
+		for (temp = 0; temp < 47; temp++)
+		{
+			__NOP();
+		}
+
+		sCommand.Instruction = RESET_EXECUTE_CMD;
+		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 	}
 
+
+	// if an error occured: get error code:
 	if (res != HAL_OK)
 	{
 		errorCode.errorCode = hospi1.ErrorCode;
+	}
+
+
+	return res;
+}
+
+
+
+static uint8_t QSPI_ReadChipId(void)
+{
+	OSPI_RegularCmdTypeDef sCommand = {};
+	uint8_t test_buffer[20*2] = { 0 };
+	HAL_StatusTypeDef res = HAL_OK;
+	OspiErrorCodeType errorCode = {0};
+	int i;
+
+	/*read status register*/
+
+	for(i=1;i<8;++i)
+	{
+		sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //
+		sCommand.FlashId = 0; //only applies if Dualquad is disabled
+		sCommand.Instruction = READ_ID_CMD;
+		sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
+		sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
+		sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+		sCommand.Address = 0;
+		sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
+		sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
+		sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
+		sCommand.AlternateBytes = 0;
+		sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
+		sCommand.AlternateBytesSize = 0;
+		sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
+		sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
+		sCommand.NbData = i*2;
+		sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
+		sCommand.DummyCycles = 0;
+		sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
+		sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
+
+		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+
+		if (res == HAL_OK)
+		{
+			if(sCommand.NbData > 0) // HAL_OSPI_Receive() crashes when length = 0!
+			{
+				res = HAL_OSPI_Receive(&hospi1, test_buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+			}
+		}
+
+		if (res != HAL_OK)
+		{
+			errorCode.errorCode = hospi1.ErrorCode;
+			break;
+		}
+		HAL_Delay(1);
 	}
 
 	return res;

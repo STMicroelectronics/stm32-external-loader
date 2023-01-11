@@ -26,6 +26,29 @@ static uint8_t QSPI_AutoPollingMemReady(void);
 static uint8_t QSPI_Configuration(void);
 static uint8_t QSPI_ResetChip(void);
 
+static uint8_t QSPI_ReadChipId(void);
+
+#include <stdbool.h>
+
+typedef union
+{
+	struct{
+		bool timeout:1;
+		bool transfer:1;
+		bool dma:1;
+		bool invalidParameter:1;
+		bool invalidSequence:1;
+	#if defined (USE_HAL_OSPI_REGISTER_CALLBACKS) && (USE_HAL_OSPI_REGISTER_CALLBACKS == 1U)
+		bool invalidCallback:1;
+	#else
+		bool reserved0:1;
+	#endif
+		uint32_t reserved1:26;
+	};
+	uint32_t errorCode;
+}
+OspiErrorCodeType;
+
 //#define USE_DDR
 
 /* USER CODE END 0 */
@@ -54,7 +77,7 @@ void MX_OCTOSPI1_Init(void)
   hospi1.Init.FreeRunningClock = HAL_OSPI_FREERUNCLK_DISABLE;
   hospi1.Init.ClockMode = HAL_OSPI_CLOCK_MODE_0;
   hospi1.Init.WrapSize = HAL_OSPI_WRAP_NOT_SUPPORTED;
-  hospi1.Init.ClockPrescaler = 4;
+  hospi1.Init.ClockPrescaler = 54;
   hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_NONE;
   hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_DISABLE;
   hospi1.Init.ChipSelectBoundary = 0;
@@ -93,15 +116,7 @@ void HAL_OSPI_MspInit(OSPI_HandleTypeDef* ospiHandle)
   /** Initializes the peripherals clock
   */
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_OSPI;
-    PeriphClkInitStruct.PLL2.PLL2M = 1;
-    PeriphClkInitStruct.PLL2.PLL2N = 32;
-    PeriphClkInitStruct.PLL2.PLL2P = 45;
-    PeriphClkInitStruct.PLL2.PLL2Q = 125;
-    PeriphClkInitStruct.PLL2.PLL2R = 6;
-    PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_2;
-    PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-    PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-    PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL2;
+    PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_D1HCLK;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
     {
       Error_Handler();
@@ -241,24 +256,26 @@ uint8_t CSP_QUADSPI_Init(void) {
 
 	MX_OCTOSPI1_Init();
 
-	if (QSPI_ResetChip() != HAL_OK) {
-		return HAL_ERROR;
-	}
+	QSPI_ReadChipId();
 
-	HAL_Delay(1);
-
-	if (QSPI_AutoPollingMemReady() != HAL_OK) {
-		return HAL_ERROR;
-	}
-
-	if (QSPI_WriteEnable() != HAL_OK) {
-
-		return HAL_ERROR;
-	}
-
-	if (QSPI_Configuration() != HAL_OK) {
-		return HAL_ERROR;
-	}
+//	if (QSPI_ResetChip() != HAL_OK) {
+//		return HAL_ERROR;
+//	}
+//
+//	HAL_Delay(1);
+//
+//	if (QSPI_AutoPollingMemReady() != HAL_OK) {
+//		return HAL_ERROR;
+//	}
+//
+//	if (QSPI_WriteEnable() != HAL_OK) {
+//
+//		return HAL_ERROR;
+//	}
+//
+//	if (QSPI_Configuration() != HAL_OK) {
+//		return HAL_ERROR;
+//	}
 
 	return HAL_OK;
 }
@@ -631,6 +648,52 @@ static uint8_t QSPI_ResetChip()
 		return HAL_ERROR;
 	}
 	return HAL_OK;
+}
+
+
+
+static uint8_t QSPI_ReadChipId(void)
+{
+	OSPI_RegularCmdTypeDef sCommand = {};
+	uint8_t test_buffer[3*2] = { 0 };
+	HAL_StatusTypeDef res = HAL_OK;
+	OspiErrorCodeType errorCode = {0};
+
+	/*read status register*/
+
+	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
+	sCommand.FlashId = 0; //only applies if Dualquad is disabled
+	sCommand.Instruction = READ_ID_CMD;
+	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
+	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
+	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+	sCommand.Address = 0;
+	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
+	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
+	sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
+	sCommand.AlternateBytes = 0;
+	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
+	sCommand.AlternateBytesSize = 0;
+	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
+	sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
+	sCommand.NbData = 3;//how many bytes?
+	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
+	sCommand.DummyCycles = 0;//3*8;
+	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
+	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
+
+	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+
+	if (res == HAL_OK) {
+		res = HAL_OSPI_Receive(&hospi1, test_buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	}
+
+	if (res != HAL_OK)
+	{
+		errorCode.errorCode = hospi1.ErrorCode;
+	}
+
+	return res;
 }
 
 

@@ -697,7 +697,7 @@ static uint8_t QSPI_ReadChipId(void)
 		sCommand.AlternateBytesSize = 0;
 		sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
 		sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
-		sCommand.NbData = i*2;
+		sCommand.NbData = i*2; //id needs to be read twice, so total number of bytes is doubled
 		sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
 		sCommand.DummyCycles = 0;
 		sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used

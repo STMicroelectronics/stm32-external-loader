@@ -57,6 +57,8 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 
 static uint8_t buffer_test[MEMORY_DUAL_SECTOR_SIZE];
+static uint8_t buffer_test_read[MEMORY_DUAL_SECTOR_SIZE];
+#define NUMBER_OF_SECTORS_TO_TEST 2
 /* USER CODE END 0 */
 
 /**
@@ -106,7 +108,7 @@ int main(void)
   	}
 
 
-  	for (var = 0; var < SECTORS_COUNT; var++)
+  	for (var = 0; var < NUMBER_OF_SECTORS_TO_TEST; var++)
   	{
   		res = CSP_QSPI_EraseSector(var * MEMORY_DUAL_SECTOR_SIZE, (var + 1) * MEMORY_DUAL_SECTOR_SIZE - 1);
   		if (res != HAL_OK)
@@ -114,12 +116,18 @@ int main(void)
   			while (1);  //breakpoint - error detected
   		}
 
-  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
-  		if (res != HAL_OK)
-		{
-  			while (1);  //breakpoint - error detected
-  		}
+//  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
+//  		if (res != HAL_OK)
+//		{
+//  			while (1);  //breakpoint - error detected
+//  		}
   	}
+
+	res = CSP_QSPI_ReadMemory(buffer_test_read, 0, sizeof(buffer_test_read));
+	if (res != HAL_OK)
+	{
+		while (1);  //breakpoint - error detected
+	}
 
   	res = CSP_QSPI_EnableMemoryMappedMode();
 	if (res != HAL_OK)
@@ -127,7 +135,7 @@ int main(void)
 		while (1);  //breakpoint - error detected
 	}
 
-  	for (var = 0; var < SECTORS_COUNT; var++)
+  	for (var = 0; var < NUMBER_OF_SECTORS_TO_TEST; var++)
   	{
   		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + var * MEMORY_DUAL_SECTOR_SIZE), MEMORY_DUAL_SECTOR_SIZE) != 0)
   		{

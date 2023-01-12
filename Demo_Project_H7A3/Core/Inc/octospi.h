@@ -33,6 +33,7 @@ extern "C" {
 /* USER CODE END Includes */
 
 extern OSPI_HandleTypeDef hospi1;
+
 /* USER CODE BEGIN Private defines */
 
 //MT25TL256 memory parameters
@@ -58,6 +59,7 @@ void MX_OCTOSPI1_Init(void);
 uint8_t CSP_QUADSPI_Init(void);
 uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress ,uint32_t EraseEndAddress);
 uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t buffer_size);
+uint8_t CSP_QSPI_ReadMemory(uint8_t* buffer, uint32_t address, uint32_t buffer_size);
 uint8_t CSP_QSPI_EnableMemoryMappedMode(void);
 uint8_t CSP_QSPI_Erase_Chip(void);
 

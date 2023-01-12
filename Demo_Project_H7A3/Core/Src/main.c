@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h> // for memcmp
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,7 +56,7 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-static uint8_t buffer_test[MEMORY_SECTOR_SIZE];
+static uint8_t buffer_test[MEMORY_DUAL_SECTOR_SIZE];
 /* USER CODE END 0 */
 
 /**
@@ -65,7 +66,8 @@ static uint8_t buffer_test[MEMORY_SECTOR_SIZE];
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	HAL_StatusTypeDef res = HAL_OK;
+	volatile bool testFlash = false; // make high with debugger
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -94,44 +96,42 @@ int main(void)
 	
   	uint32_t var = 0;
 
-  	CSP_QUADSPI_Init();
+  	res = CSP_QUADSPI_Init();
 
-  	while(1);
+  	while(!testFlash); // make high with debugger to proceed to test
 
-  	for (var = 0; var < MEMORY_SECTOR_SIZE; var++) {
+  	for (var = 0; var < MEMORY_DUAL_SECTOR_SIZE; var++)
+  	{
   		buffer_test[var] = (var & 0xff);
   	}
 
-  	for (var = 0; var < SECTORS_COUNT; var++) {
 
-  		if (CSP_QSPI_EraseSector(var * MEMORY_SECTOR_SIZE,
-  				(var + 1) * MEMORY_SECTOR_SIZE - 1) != HAL_OK) {
-
-  			while (1)
-  				;  //breakpoint - error detected
+  	for (var = 0; var < SECTORS_COUNT; var++)
+  	{
+  		res = CSP_QSPI_EraseSector(var * MEMORY_DUAL_SECTOR_SIZE, (var + 1) * MEMORY_DUAL_SECTOR_SIZE - 1);
+  		if (res != HAL_OK)
+		{
+  			while (1);  //breakpoint - error detected
   		}
 
-  		if (CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_SECTOR_SIZE,
-  				sizeof(buffer_test)) != HAL_OK) {
-
-  			while (1)
-  				;  //breakpoint - error detected
+  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
+  		if (res != HAL_OK)
+		{
+  			while (1);  //breakpoint - error detected
   		}
-
   	}
 
-  	if (CSP_QSPI_EnableMemoryMappedMode() != HAL_OK) {
+  	res = CSP_QSPI_EnableMemoryMappedMode();
+	if (res != HAL_OK)
+	{
+		while (1);  //breakpoint - error detected
+	}
 
-  		while (1)
-  			; //breakpoint - error detected
-  	}
-
-  	for (var = 0; var < SECTORS_COUNT; var++) {
-  		if (memcmp(buffer_test,
-  				(uint8_t*) (0x90000000 + var * MEMORY_SECTOR_SIZE),
-  				MEMORY_SECTOR_SIZE) != HAL_OK) {
-  			while (1)
-  				;  //breakpoint - error detected - otherwise QSPI works properly
+  	for (var = 0; var < SECTORS_COUNT; var++)
+  	{
+  		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + var * MEMORY_DUAL_SECTOR_SIZE), MEMORY_DUAL_SECTOR_SIZE) != 0)
+  		{
+  			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}
   	}
   /* USER CODE END 2 */

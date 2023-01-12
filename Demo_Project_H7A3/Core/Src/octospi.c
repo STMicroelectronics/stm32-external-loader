@@ -36,6 +36,7 @@ static uint8_t QSPI_Command(uint8_t command,
 							uint8_t* readData,
 							size_t dataLength);
 
+static uint8_t QSPI_AutoPollingSetup(void);
 
 
 typedef union
@@ -56,6 +57,38 @@ typedef union
 	uint32_t errorCode;
 }
 OspiErrorCodeType;
+
+
+//MT25TL256 commands
+#define WRITE_ENABLE_CMD 0x06				// WRITE ENABLE
+#define READ_STATUS_REG_CMD 0x05			// READ STATUS REGISTER
+#define WRITE_STATUS_REG_CMD 0x01			// WRITE STATUS REGISTER
+#define SECTOR_ERASE_CMD 0x20 				// 4KiB SUBSECTOR ERASE
+#define CHIP_ERASE_CMD 0xC7 				// 128Mib BULK ERASE (for each die, so 256Mib)
+#define QUAD_IN_FAST_PROG_CMD 0x38 			// EXTENDED QUAD INPUT FAST PROGRAM
+//#define READ_CONFIGURATION_REG_CMD 0x15 	// page 50 table 24?
+//#define QUAD_READ_IO_CMD 0xEC 				// ?
+#define QUAD_OUT_FAST_READ_CMD 0x6B 		// QUAD OUTPUT FAST READ
+#define QPI_ENABLE_CMD 0x35 				// ENTER QUAD INPUT/OUTPUT MODE
+#define DISABLE_QIP_MODE 0xf5 				// RESET QUAD INPUT/OUTPUT MODE
+#define RESET_ENABLE_CMD 0x66 				// RESET ENABLE
+#define RESET_EXECUTE_CMD 0x99 				// RESET MEMORY
+#define READ_ID_CMD 0x9E
+
+#define READ_VOLATILE_CONFIGURATION_REGISTER_CMD 0x85
+#define WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD 0x81
+#define READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x65
+#define WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x61
+
+
+
+#define DUMMY_CLOCK_CYCLES_READ_QUAD 10  // todo: check which one is this? sometimes 0,4,8 or 10
+#define FAST_READ_DUMMY_CYCLES 10
+
+#define AUTO_POLLING_INTERVAL 16 // todo check
+
+#define STATUS_REG_WIP_MASK (1UL<<0)
+#define STATUS_REG_WEL_MASK (1UL<<1)
 
 //#define USE_DDR
 
@@ -257,39 +290,53 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 
 /* QUADSPI init function */
 uint8_t CSP_QUADSPI_Init(void) {
+	HAL_StatusTypeDef res = HAL_OK;
+	volatile OspiErrorCodeType errorCode = {0};
+
 	//prepare QSPI peripheral for ST-Link Utility operations
-	if (HAL_OSPI_DeInit(&hospi1) != HAL_OK) {
-		return HAL_ERROR;
-	}
+	res = HAL_OSPI_DeInit(&hospi1);
 
 	MX_OCTOSPI1_Init();
 
 
-
-	if (QSPI_ResetChip() != HAL_OK) {
-		return HAL_ERROR;
+	if (res == HAL_OK)
+	{
+		res = QSPI_ResetChip();
 	}
+
 
 	HAL_Delay(1); // todo remove magic number
 
-	QSPI_ReadChipId();
-//
-//	HAL_Delay(1);
-//
-//	if (QSPI_AutoPollingMemReady() != HAL_OK) {
-//		return HAL_ERROR;
-//	}
-//
-//	if (QSPI_WriteEnable() != HAL_OK) {
-//
-//		return HAL_ERROR;
-//	}
-//
-//	if (QSPI_Configuration() != HAL_OK) {
-//		return HAL_ERROR;
-//	}
 
-	return HAL_OK;
+	if (res == HAL_OK)
+	{
+		res = QSPI_ReadChipId();
+	}
+
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_AutoPollingMemReady();
+	}
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_WriteEnable();
+	}
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_Configuration();
+	}
+
+	if (res != HAL_OK)
+	{
+		errorCode.errorCode = hospi1.ErrorCode;
+	}
+
+	(void)errorCode;
+
+	return res;
 }
 
 
@@ -338,139 +385,148 @@ uint8_t CSP_QSPI_Erase_Chip(void)
 	return HAL_OK;
 }
 
-static uint8_t QSPI_AutoPollingMemReady(void)
+static uint8_t QSPI_AutoPollingSetup(void)
 {
-	OSPI_AutoPollingTypeDef sConfig = {};
+	OSPI_RegularCmdTypeDef sCommand = {0};
+	HAL_StatusTypeDef res = HAL_OK;
 
-	// todo: "avoid the auto-poll operations"
-
-	sConfig.Match = 0x00;
-	sConfig.Mask = 0x01;
-	sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
-	sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
-	sConfig.Interval = 0x10;
-
-	if (HAL_OSPI_AutoPolling(&hospi1, &sConfig,	HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-
-	return HAL_OK;
-
-//	return HAL_ERROR;
-}
-
-
-static uint8_t QSPI_WriteEnable(void)
-{
-	OSPI_RegularCmdTypeDef sCommand = {};
-	OSPI_AutoPollingTypeDef sConfig = {};
-
-	/* Enable write operations ------------------------------------------ */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG;
-	sCommand.FlashId = 0; //only applies if Dualquad is disabled
-	sCommand.Instruction = WRITE_ENABLE_CMD;
-	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
-	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
-	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	sCommand.Address = 0;
-	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
-	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
-	sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
-	sCommand.AlternateBytes = 0;
-	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
-	sCommand.AlternateBytesSize = 0;
-	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = HAL_OSPI_DATA_NONE;
-	sCommand.NbData = 0; //?
-	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.DummyCycles = 0;
-	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
-	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
-
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)
-			!= HAL_OK) {
-		return HAL_ERROR;
-	}
-
-	/* Configure automatic polling mode to wait for write enabling ---- */
-	sConfig.Match = 0x02;
-	sConfig.Mask = 0x02;
-	sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
-	sConfig.Interval = 0x10;
-	sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
-
-	if (HAL_OSPI_AutoPolling(&hospi1, &sConfig, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-
-	return HAL_OK;
-}
-
-/*Enable quad mode and set dummy cycles count*/
-static uint8_t QSPI_Configuration(void)
-{
-	OSPI_RegularCmdTypeDef sCommand = {};
-	uint8_t test_buffer[4] = { 0 };
-	/*read status register*/
-
-	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
 	sCommand.FlashId = 0; //only applies if Dualquad is disabled
 	sCommand.Instruction = READ_STATUS_REG_CMD;
 	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
 	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	sCommand.Address = 0;
 	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
+	sCommand.Address = 0;
 	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
 	sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
-	sCommand.AlternateBytes = 0;
 	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
+	sCommand.AlternateBytes = 0;
 	sCommand.AlternateBytesSize = 0;
 	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = HAL_OSPI_DATA_NONE;
-	sCommand.NbData = 1;//why only 1 byte?
+	sCommand.DataMode = HAL_OSPI_DATA_1_LINE;
+	sCommand.NbData = 2; // todo check if this is correct
 	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
 	sCommand.DummyCycles = 0;
 	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
 	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
 
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)	!= HAL_OK) {
-		return HAL_ERROR;
-	}
-	if (HAL_OSPI_Receive(&hospi1, test_buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-	//read 2nd half or other die?
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)	!= HAL_OK) {
-		return HAL_ERROR;
-	}
-	if (HAL_OSPI_Receive(&hospi1, &(test_buffer[1]),	HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		return HAL_ERROR;
-	}
-	/*modify buffer to enable quad mode*/
-	test_buffer[0] |= 0x40;
-
-	/*set dummy cycles*/
-	test_buffer[1] |= 0xC0;
-
-	sCommand.NbData = 2;
-
-	if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)	!= HAL_OK) {
-		return HAL_ERROR;
+	if (res == HAL_OK)
+	{
+		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 	}
 
-	if (HAL_OSPI_Transmit(&hospi1, test_buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-		Error_Handler();
-		return HAL_ERROR;
+	return res;
+}
+
+static uint8_t QSPI_AutoPollingMemReady(void)
+{
+	OSPI_AutoPollingTypeDef sConfig = {};
+	HAL_StatusTypeDef res = HAL_OK;
+
+	// todo: "avoid the auto-poll operations"
+
+	res = QSPI_AutoPollingSetup();
+
+	if (res == HAL_OK)
+	{
+		sConfig.Match = 0;
+		sConfig.Mask = (STATUS_REG_WIP_MASK<<0) | (STATUS_REG_WIP_MASK<<8);
+		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
+		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
+		sConfig.Interval = AUTO_POLLING_INTERVAL;
+
+		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig,	HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 	}
-	return HAL_OK;
+
+	return res;
+}
+
+
+static uint8_t QSPI_WriteEnable(void)
+{
+	HAL_StatusTypeDef res = HAL_OK;
+	OSPI_AutoPollingTypeDef sConfig = {};
+
+	/* Enable write operations ------------------------------------------ */
+
+	res = QSPI_Command(WRITE_ENABLE_CMD, false, 0, NULL, NULL, 0);
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_AutoPollingSetup();
+	}
+
+	if (res == HAL_OK)
+	{
+		/* Configure automatic polling mode to wait for write enabling ---- */
+
+
+		sConfig.Match = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
+		sConfig.Mask = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
+
+//		sConfig.Match = STATUS_REG_WEL_MASK;
+//		sConfig.Mask = STATUS_REG_WEL_MASK;
+
+		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
+		sConfig.Interval = AUTO_POLLING_INTERVAL;
+		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
+
+		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	}
+
+	return res;
+}
+
+/*Enable quad mode and set dummy cycles count*/
+static uint8_t QSPI_Configuration(void)
+{
+	HAL_StatusTypeDef res = HAL_OK;
+	uint8_t test_buffer[2] = { 0 };
+	/*read status register*/
+
+	// RMW dummy cycles:
+	res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, test_buffer, 2);
+
+	if (res == HAL_OK)
+	{
+		test_buffer[0] &= ~(((1<<4)-1)<<4);
+		test_buffer[0] |= FAST_READ_DUMMY_CYCLES << 4;
+		test_buffer[1] &= ~(((1<<4)-1)<<4);
+		test_buffer[1] |= FAST_READ_DUMMY_CYCLES << 4;
+
+		res = QSPI_Command(WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, test_buffer, 2);
+	}
+
+	// RMW dummy cycles:
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, test_buffer, 2);
+	}
+
+	if (res == HAL_OK)
+	{
+		test_buffer[0] |= ((1<<2)-1)<<6;
+		test_buffer[0] &= ~(1 << 7); // enable Quad mode
+		test_buffer[1] |= ((1<<2)-1)<<6;
+		test_buffer[1] &= ~(1 << 7); // enable Quad mode
+
+//		//TODO: enable DTR
+//		test_buffer[0] &= ~(1 << 5); // enable DTR mode
+//		test_buffer[1] &= ~(1 << 5); // enable DTR mode
+
+		res = QSPI_Command(WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, test_buffer, 2);
+	}
+
+	return res;
 }
 
 uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 {
 	OSPI_RegularCmdTypeDef sCommand = {};
 
-	EraseStartAddress &= (MEMORY_DUAL_SECTOR_SIZE -1);
+	EraseStartAddress &= (MEMORY_DUAL_SECTOR_SIZE - 1);
 
 	/* Erasing Sequence -------------------------------------------------- */
 
@@ -684,6 +740,8 @@ static uint8_t QSPI_Command(uint8_t command,
 		sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
 	}
 
+	//todo set FAST_READ_DUMMY_CYCLES
+
 
 	sCommand.DummyCycles = 0;
 	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
@@ -720,35 +778,11 @@ static uint8_t QSPI_Command(uint8_t command,
 
 static uint8_t QSPI_ResetChip()
 {
-	OSPI_RegularCmdTypeDef sCommand = {};
 	uint32_t temp = 0;
 	HAL_StatusTypeDef res = HAL_OK;
-	OspiErrorCodeType errorCode = {0};
 	/* Erasing Sequence -------------------------------------------------- */
 
-	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
-	sCommand.FlashId = 0; //only applies if Dualquad is disabled
-	sCommand.Instruction = RESET_ENABLE_CMD;
-	sCommand.InstructionMode = HAL_OSPI_INSTRUCTION_1_LINE;
-	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
-	sCommand.InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	sCommand.Address = 0;
-	sCommand.AddressMode = HAL_OSPI_ADDRESS_NONE;
-	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
-	sCommand.AddressDtrMode = HAL_OSPI_ADDRESS_DTR_DISABLE;
-	sCommand.AlternateBytes = 0;
-	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
-	sCommand.AlternateBytesSize = 0;
-	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = HAL_OSPI_DATA_NONE;
-	sCommand.NbData = 0;
-	sCommand.DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.DummyCycles = 0;
-	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
-	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
-
-
-	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	res = QSPI_Command(RESET_ENABLE_CMD, false, 0, NULL, NULL, 0);
 
 	if (res == HAL_OK)
 	{
@@ -759,17 +793,8 @@ static uint8_t QSPI_ResetChip()
 			__NOP();
 		}
 
-		sCommand.Instruction = RESET_EXECUTE_CMD;
-		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+		res = QSPI_Command(RESET_EXECUTE_CMD, false, 0, NULL, NULL, 0);
 	}
-
-
-	// if an error occured: get error code:
-	if (res != HAL_OK)
-	{
-		errorCode.errorCode = hospi1.ErrorCode;
-	}
-
 
 	return res;
 }
@@ -780,15 +805,8 @@ static uint8_t QSPI_ReadChipId(void)
 {
 	uint8_t test_buffer[3*2] = { 0 };
 	HAL_StatusTypeDef res = HAL_OK;
-	OspiErrorCodeType errorCode = {0};
 
 	res = QSPI_Command(READ_ID_CMD, false, 0, NULL, test_buffer, sizeof(test_buffer));
-
-	if (res != HAL_OK)
-	{
-		errorCode.errorCode = hospi1.ErrorCode;
-	}
-
 
 	if (res == HAL_OK)
 	{

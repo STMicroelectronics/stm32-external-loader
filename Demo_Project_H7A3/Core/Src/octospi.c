@@ -796,14 +796,16 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 
 	/* Initialize memory-mapped mode for read operations */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_READ_CFG;
-	sCommand.Instruction = 0xEB;// QUAD INPUT/OUTPUT FAST READ;
+	sCommand.Instruction = 0x0B;//0xEB;// QUAD INPUT/OUTPUT FAST READ;
 	sCommand.FlashId = 0;
 	sCommand.InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
+	sCommand.Address = 0;
 	sCommand.AddressMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_ADDRESS_4_LINES : HAL_OSPI_ADDRESS_1_LINE;
 	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
 	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
 	sCommand.DataMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_DATA_4_LINES : HAL_OSPI_DATA_1_LINE;
+	sCommand.NbData = 1;
 	sCommand.DummyCycles = FAST_READ_DUMMY_CYCLES;
 	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
 
@@ -811,7 +813,9 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 	sCommand.AddressDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_ADDRESS_DTR_ENABLE : HAL_OSPI_ADDRESS_DTR_DISABLE;
 	sCommand.DataDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_DATA_DTR_ENABLE : HAL_OSPI_DATA_DTR_DISABLE;
 
-	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
+	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE;
+
+
 
 	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 
@@ -824,8 +828,10 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 
 	/* Initialize memory-mapped mode for write operations */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
-	sCommand.Instruction = 0x32; // QUAD INPUT FAST PROGRAM Command
-	sCommand.DummyCycles = 0;
+	sCommand.Instruction = 0x32; // QUAD INPUT FAST PROGRAM Command ???
+	sCommand.DummyCycles = 0; // ?
+	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
+
 	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 
 	if (res !=HAL_OK)

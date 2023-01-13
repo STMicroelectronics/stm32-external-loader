@@ -117,7 +117,8 @@ static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospi)
 #ifdef USE_COMMAND_DTR
 	//hospi->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED;
 #else
-	 hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
+//	 hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
+	 hospi->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED;
 #endif
 
 	return HAL_OSPI_Init(hospi);
@@ -355,15 +356,15 @@ uint8_t CSP_QUADSPI_Init(void) {
 		res = QSPI_Configuration();
 	}
 
-	if (res == HAL_OK)
-	{
-		res = QSPI_ReadChipId();
-	}
-
-	if (res != HAL_OK)
-	{
-		res = QSPI_ReadChipId();
-	}
+//	if (res == HAL_OK)
+//	{
+//		res = QSPI_ReadChipId();
+//	}
+//
+//	if (res != HAL_OK)
+//	{
+//		res = QSPI_ReadChipId();
+//	}
 
 
 
@@ -728,7 +729,7 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 
 	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
 	sCommand.FlashId = 0; //only applies if Dualquad is disabled
-	sCommand.Instruction = QUAD_IN_FAST_PROG_CMD;
+	sCommand.Instruction = 0x02; // page program
 	sCommand.InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
 	sCommand.InstructionDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_INSTRUCTION_DTR_ENABLE : HAL_OSPI_INSTRUCTION_DTR_DISABLE;
@@ -826,9 +827,9 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 	}
 
 
-	/* Initialize memory-mapped mode for write operations */
+//	/* Initialize memory-mapped mode for write operations */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
-	sCommand.Instruction = 0x32; // QUAD INPUT FAST PROGRAM Command ???
+	sCommand.Instruction = 0;// 0x32; // QUAD INPUT FAST PROGRAM Command ???
 	sCommand.DummyCycles = 0; // ?
 	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
 
@@ -838,6 +839,18 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 	{
 		Error_Handler();
 	}
+
+	//	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
+	//	sCommand.Instruction = 0x32; // QUAD INPUT FAST PROGRAM Command ???
+	//	sCommand.DummyCycles = 0; // ?
+	//	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
+	//
+	//	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	//
+	//	if (res !=HAL_OK)
+	//	{
+	//		Error_Handler();
+	//	}
 
 	sMemMappedCfg.TimeOutActivation = HAL_OSPI_TIMEOUT_COUNTER_DISABLE;
 	sMemMappedCfg.TimeOutPeriod = 0;

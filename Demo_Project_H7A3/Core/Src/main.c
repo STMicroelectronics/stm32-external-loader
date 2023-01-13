@@ -58,7 +58,7 @@ void SystemClock_Config(void);
 
 static uint8_t buffer_test[MEMORY_DUAL_SECTOR_SIZE];
 static uint8_t buffer_test_read[MEMORY_DUAL_SECTOR_SIZE];
-#define NUMBER_OF_SECTORS_TO_TEST 2
+#define NUMBER_OF_SECTORS_TO_TEST 4
 /* USER CODE END 0 */
 
 /**
@@ -96,35 +96,38 @@ int main(void)
   MX_OCTOSPI1_Init();
   /* USER CODE BEGIN 2 */
 	
-  	uint32_t var = 0;
+  	uint32_t sectorIndex = 0;
   	uint32_t address;
 
   	res = CSP_QUADSPI_Init();
 
   	while(!testFlash); // make high with debugger to proceed to test
 
-  	for (var = 0; var < MEMORY_DUAL_SECTOR_SIZE; var++)
+  	for (sectorIndex = 0; sectorIndex < MEMORY_DUAL_SECTOR_SIZE; sectorIndex++)
   	{
-  		buffer_test[var] = (var+1) & 0xff;
+  		buffer_test[sectorIndex] = (sectorIndex+1) & 0xff;
   	}
 
 
-  	for (var = 0; var < NUMBER_OF_SECTORS_TO_TEST; var++)
+  	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
-  		res = CSP_QSPI_EraseSector(var * MEMORY_DUAL_SECTOR_SIZE, (var + 1) * MEMORY_DUAL_SECTOR_SIZE - 1);
+  		res = CSP_QSPI_EraseSector(sectorIndex * MEMORY_DUAL_SECTOR_SIZE, (sectorIndex + 1) * MEMORY_DUAL_SECTOR_SIZE - 1);
   		if (res != HAL_OK)
 		{
   			while (1);  //breakpoint - error detected
   		}
 
-  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
+  		HAL_Delay(10); // todo remove magic number
+
+  		buffer_test[0] = sectorIndex+1;
+  		res = CSP_QSPI_WriteMemory(buffer_test, sectorIndex * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
   		if (res != HAL_OK)
 		{
   			while (1);  //breakpoint - error detected
   		}
   	}
 
-  	address = MEMORY_DUAL_SECTOR_SIZE*(NUMBER_OF_SECTORS_TO_TEST-1);
+  	address = 0;
 	res = CSP_QSPI_ReadMemory(buffer_test_read, address, sizeof(buffer_test_read));
 	if (res != HAL_OK)
 	{
@@ -137,9 +140,9 @@ int main(void)
 		while (1);  //breakpoint - error detected
 	}
 
-  	for (var = 0; var < NUMBER_OF_SECTORS_TO_TEST; var++)
+  	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
-  		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + var * MEMORY_DUAL_SECTOR_SIZE), 100) != 0)
+  		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE), 100) != 0)
   		{
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}

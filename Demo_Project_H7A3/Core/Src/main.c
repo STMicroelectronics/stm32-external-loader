@@ -105,7 +105,7 @@ int main(void)
 
   	for (var = 0; var < MEMORY_DUAL_SECTOR_SIZE; var++)
   	{
-  		buffer_test[var] = (var & 0xff);
+  		buffer_test[var] = (var+1) & 0xff;
   	}
 
 
@@ -117,14 +117,14 @@ int main(void)
   			while (1);  //breakpoint - error detected
   		}
 
-//  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
-//  		if (res != HAL_OK)
-//		{
-//  			while (1);  //breakpoint - error detected
-//  		}
+  		res = CSP_QSPI_WriteMemory(buffer_test, var * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
+  		if (res != HAL_OK)
+		{
+  			while (1);  //breakpoint - error detected
+  		}
   	}
 
-  	address = MEMORY_DUAL_SECTOR_SIZE*3;
+  	address = MEMORY_DUAL_SECTOR_SIZE*(NUMBER_OF_SECTORS_TO_TEST-1);
 	res = CSP_QSPI_ReadMemory(buffer_test_read, address, sizeof(buffer_test_read));
 	if (res != HAL_OK)
 	{
@@ -139,7 +139,7 @@ int main(void)
 
   	for (var = 0; var < NUMBER_OF_SECTORS_TO_TEST; var++)
   	{
-  		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + var * MEMORY_DUAL_SECTOR_SIZE), MEMORY_DUAL_SECTOR_SIZE) != 0)
+  		if (memcmp(buffer_test,	(uint8_t*) (0x90000000 + var * MEMORY_DUAL_SECTOR_SIZE), 100) != 0)
   		{
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}

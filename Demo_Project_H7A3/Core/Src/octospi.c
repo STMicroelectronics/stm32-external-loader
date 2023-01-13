@@ -45,8 +45,6 @@
 #define READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x65
 #define WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x61
 
-
-
 //#define DUMMY_CLOCK_CYCLES_READ_QUAD 10  // todo: check which one is this? sometimes 0,4,8 or 10
 #define FAST_READ_DUMMY_CYCLES 10
 
@@ -54,6 +52,9 @@
 
 #define STATUS_REG_WIP_MASK (1UL<<0)
 #define STATUS_REG_WEL_MASK (1UL<<1)
+
+
+//#define USE_DDR
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(void);
@@ -97,6 +98,7 @@ typedef struct
 	bool quadModeEnabled; 	// 4-4-4 if true, 1-1-1 if false
 	bool dtrEnabled; 		// dtr for command, address and data
 	bool switchingToQuad;
+	uint8_t dummyCycles;
 }
 DualQuadStateType;
 
@@ -104,7 +106,6 @@ DualQuadStateType;
 
 static DualQuadStateType DualQuadState;
 
-//#define USE_DDR
 
 /* USER CODE END 0 */
 
@@ -326,15 +327,9 @@ uint8_t CSP_QUADSPI_Init(void) {
 		res = QSPI_ReadChipId();
 	}
 
-
 	if (res == HAL_OK)
 	{
 		res = QSPI_AutoPollingMemReady();
-	}
-
-	if (res == HAL_OK)
-	{
-		res = QSPI_WriteEnable();
 	}
 
 	if (res == HAL_OK)
@@ -508,8 +503,13 @@ static uint8_t QSPI_Configuration(void)
 	uint8_t write_buffer[2] = { 0 };
 	/*read status register*/
 
-	// RMW dummy cycles:
+	// R-M-W dummy cycles:
 	res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_WriteEnable();
+	}
 
 	if (res == HAL_OK)
 	{
@@ -533,16 +533,20 @@ static uint8_t QSPI_Configuration(void)
 			{
 				res = HAL_ERROR;
 			}
-
 		}
 	}
 
-	// RMW dummy cycles:
+	// R-M-W dummy cycles:
 
 	if (res == HAL_OK)
 	{
 		memset(read_buffer, 0, 2); // clear buffer before reading
 		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+	}
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_WriteEnable();
 	}
 
 	if (res == HAL_OK)
@@ -554,35 +558,41 @@ static uint8_t QSPI_Configuration(void)
 		write_buffer[1] |= ((1<<2)-1)<<6;
 		write_buffer[1] &= ~(1 << 7); // enable Quad mode
 
-//		//TODO: enable DTR
-//		test_buffer[0] &= ~(1 << 5); // enable DTR mode
-//		test_buffer[1] &= ~(1 << 5); // enable DTR mode
+#ifdef USE_DDR
+		write_buffer[0] &= ~(1 << 5); // enable DTR mode
+		write_buffer[1] &= ~(1 << 5); // enable DTR mode
+#endif
 
 		DualQuadState.switchingToQuad = true; // skip auto polling
 		res = QSPI_Command(WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
 		DualQuadState.switchingToQuad = false;
 
-//		if (res == HAL_OK)
-//		{
-//			DualQuadState.quadModeEnabled = true;
-////			DualQuadState.dtrEnabled = true;
-//		}
+		if (res == HAL_OK)
+		{
+			//DualQuadState.quadModeEnabled = true;
+#ifdef USE_DDR
+			DualQuadState.dtrEnabled = true;
+#endif
+		}
 	}
 
-
+	// TODO: find out why this doesn't work
 	if (res == HAL_OK)
 	{
-		memset(read_buffer, 0, 2); // clear buffer before reading
-		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+		while(1)
+		{
+//			memset(read_buffer, 0, 2); // clear buffer before reading
+			res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+		}
 		if (res == HAL_OK)
 		{
 			if (memcmp(read_buffer,write_buffer,2) != 0)
 			{
-				res = HAL_ERROR;
+//				res = HAL_ERROR;
 			}
 			else
 			{
-				DualQuadState.quadModeEnabled = true;
+//				DualQuadState.quadModeEnabled = true;
 			}
 
 		}
@@ -880,7 +890,7 @@ static uint8_t QSPI_Command(uint8_t command,
 	//todo set FAST_READ_DUMMY_CYCLES
 
 
-	sCommand.DummyCycles = 0;
+	sCommand.DummyCycles = DualQuadState.dummyCycles;
 	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
 	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
 
@@ -899,11 +909,14 @@ static uint8_t QSPI_Command(uint8_t command,
 
 				if (res == HAL_OK)
 				{
-					//Configure automatic polling mode to wait for end of program
-					if (DualQuadState.switchingToQuad == false)
+					//Configure automatic polling mode to wait for end of program or write
+					if (DualQuadState.switchingToQuad)
 					{
-						res = QSPI_AutoPollingMemReady();
+						DualQuadState.quadModeEnabled = true;
+						DualQuadState.switchingToQuad = false;
 					}
+
+					res = QSPI_AutoPollingMemReady();
 				}
 			}
 			else

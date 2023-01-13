@@ -97,6 +97,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	
   	uint32_t var = 0;
+  	uint32_t address;
 
   	res = CSP_QUADSPI_Init();
 
@@ -123,7 +124,8 @@ int main(void)
 //  		}
   	}
 
-	res = CSP_QSPI_ReadMemory(buffer_test_read, 0, sizeof(buffer_test_read));
+  	address = MEMORY_DUAL_SECTOR_SIZE*3;
+	res = CSP_QSPI_ReadMemory(buffer_test_read, address, sizeof(buffer_test_read));
 	if (res != HAL_OK)
 	{
 		while (1);  //breakpoint - error detected

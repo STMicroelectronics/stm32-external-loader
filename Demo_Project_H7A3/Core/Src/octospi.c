@@ -53,11 +53,21 @@
 #define STATUS_REG_WIP_MASK (1UL<<0)
 #define STATUS_REG_WEL_MASK (1UL<<1)
 
-#define MT25TL256_MAX_CLK (90*1000*1000) // TODO use this
+
 
 
 //#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
-//#define USE_READ_DTR // if enabled DDR_FAST_READ_CMD will be used
+#define USE_READ_DTR // if enabled DDR_FAST_READ_CMD will be used
+
+#define MT25TL256_MAX_CLK_STR (133*1000*1000)
+#define MT25TL256_MAX_CLK_DTR (90*1000*1000)
+
+// TODO use this:
+#if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
+#define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_DTR
+#else
+#define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_STR
+#endif
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(void);
@@ -122,16 +132,28 @@ DualQuadStateType;
 static DualQuadStateType DualQuadState;
 
 
-static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospi)
+static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospiPtr)
 {
-#ifdef USE_COMMAND_DTR
-	//hospi->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED;
+	hospiPtr->Init.ClockPrescaler = (SystemCoreClock+MT25TL256_MAX_CLK-1) / MT25TL256_MAX_CLK;
+
+#if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
+//	hospiPtr->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED; // doesn't work
+	hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_ENABLE;
 #else
-//	 hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
-	 hospi->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED;
+	hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
 #endif
 
-	return HAL_OSPI_Init(hospi);
+
+	if (hospi1.Init.DelayHoldQuarterCycle == HAL_OSPI_DHQC_ENABLE)
+	{
+		// delay quarter cycle requires at least 4 cycles
+		if (hospiPtr->Init.ClockPrescaler < 4)
+		{
+			hospiPtr->Init.ClockPrescaler = 4;
+		}
+	}
+
+	return HAL_OSPI_Init(hospiPtr);
 }
 
 #define HAL_OSPI_Init HAL_OSPI_InitOveruled
@@ -332,7 +354,6 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 
 /* USER CODE BEGIN 1 */
 
-/* QUADSPI init function */
 uint8_t CSP_QUADSPI_Init(void) {
 	HAL_StatusTypeDef res = HAL_OK;
 	volatile OspiErrorCodeType errorCode = {0};
@@ -375,176 +396,9 @@ uint8_t CSP_QUADSPI_Init(void) {
 	return res;
 }
 
-
 uint8_t CSP_QSPI_Erase_Chip(void)
 {
 	return QSPI_Command(CHIP_ERASE_CMD, false, 0, NULL, NULL, 0);
-}
-
-static uint8_t QSPI_AutoPollingSetup(void)
-{
-	OSPI_RegularCmdTypeDef sCommand = {0};
-	HAL_StatusTypeDef res = HAL_OK;
-
-	// 2 bytes so both dies are checked
-	res = QSPI_InitCommandStruct(&sCommand, READ_STATUS_REG_CMD, false, 0, 2, false);
-
-	if (res == HAL_OK)
-	{
-		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	}
-
-	return res;
-}
-
-static uint8_t QSPI_AutoPollingMemReady(void)
-{
-	OSPI_AutoPollingTypeDef sConfig = {};
-	HAL_StatusTypeDef res = HAL_OK;
-
-	// todo: "avoid the auto-poll operations"
-
-	res = QSPI_AutoPollingSetup();
-
-	if (res == HAL_OK)
-	{
-		sConfig.Match = 0;
-		sConfig.Mask = (STATUS_REG_WIP_MASK<<0) | (STATUS_REG_WIP_MASK<<8);
-		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
-		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
-		sConfig.Interval = AUTO_POLLING_INTERVAL;
-
-		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig,	HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	}
-
-	return res;
-}
-
-
-static uint8_t QSPI_WriteEnable(void)
-{
-	HAL_StatusTypeDef res = HAL_OK;
-	OSPI_AutoPollingTypeDef sConfig = {};
-
-	/* Enable write operations ------------------------------------------ */
-
-	res = QSPI_Command(WRITE_ENABLE_CMD, false, 0, NULL, NULL, 0);
-
-	if (res == HAL_OK)
-	{
-		res = QSPI_AutoPollingSetup();
-	}
-
-	if (res == HAL_OK)
-	{
-		/* Configure automatic polling mode to wait for write enabling ---- */
-
-		//check for both dies so shift mask
-		sConfig.Match = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
-		sConfig.Mask = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
-
-		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
-		sConfig.Interval = AUTO_POLLING_INTERVAL;
-		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
-
-		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	}
-
-	return res;
-}
-
-/*Enable quad mode and set dummy cycles count*/
-static uint8_t QSPI_Configuration(void)
-{
-	HAL_StatusTypeDef res = HAL_OK;
-	uint8_t read_buffer[2] = { 0 };
-	uint8_t write_buffer[2] = { 0 };
-	/*read status register*/
-
-	// R-M-W dummy cycles:
-	res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
-
-	if (res == HAL_OK)
-	{
-		res = QSPI_WriteEnable();
-	}
-
-	if (res == HAL_OK)
-	{
-		memcpy(write_buffer,read_buffer,2);
-
-		write_buffer[0] &= ~(((1<<4)-1)<<4);
-		write_buffer[0] |= FAST_READ_DUMMY_CYCLES << 4;
-		write_buffer[1] &= ~(((1<<4)-1)<<4);
-		write_buffer[1] |= FAST_READ_DUMMY_CYCLES << 4;
-
-		res = QSPI_Command(WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
-	}
-
-	if (res == HAL_OK)
-	{
-		memset(read_buffer, 0, 2); // clear buffer before reading
-		res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
-		if (res == HAL_OK)
-		{
-			if (memcmp(read_buffer,write_buffer,2) != 0)
-			{
-				res = HAL_ERROR;
-			}
-		}
-	}
-
-	// R-M-W dummy cycles:
-
-	if (res == HAL_OK)
-	{
-		memset(read_buffer, 0, 2); // clear buffer before reading
-		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
-	}
-
-	if (res == HAL_OK)
-	{
-		res = QSPI_WriteEnable();
-	}
-
-	if (res == HAL_OK)
-	{
-		memcpy(write_buffer,read_buffer,2);
-
-		write_buffer[0] |= ((1<<2)-1)<<6;
-		write_buffer[0] &= ~(1 << 7); // enable Quad mode
-		write_buffer[1] |= ((1<<2)-1)<<6;
-		write_buffer[1] &= ~(1 << 7); // enable Quad mode
-
-#ifdef USE_COMMAND_DTR
-		write_buffer[0] &= ~(1 << 5); // enable DTR mode
-		write_buffer[1] &= ~(1 << 5); // enable DTR mode
-		DualQuadState.switchingToDtr = true;
-#endif
-
-		DualQuadState.switchingToQuad = true; // skip auto polling
-		res = QSPI_Command(WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
-		DualQuadState.switchingToQuad = false;
-#ifdef USE_COMMAND_DTR
-		DualQuadState.switchingToDtr = false;
-#endif
-	}
-
-	if (res == HAL_OK)
-	{
-		memset(read_buffer, 0, 2); // clear buffer before reading
-		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
-
-		if (res == HAL_OK)
-		{
-			if (memcmp(read_buffer,write_buffer,2) != 0)
-			{
-				res = HAL_ERROR;
-			}
-		}
-	}
-
-	return res;
 }
 
 uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
@@ -632,7 +486,6 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 	return res;
 }
 
-
 uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 {
 	OSPI_MemoryMappedTypeDef sMemMappedCfg = {};
@@ -673,6 +526,171 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 	return res;
 }
 
+// static functions:
+
+static uint8_t QSPI_AutoPollingSetup(void)
+{
+	OSPI_RegularCmdTypeDef sCommand = {0};
+	HAL_StatusTypeDef res = HAL_OK;
+
+	// 2 bytes so both dies are checked
+	res = QSPI_InitCommandStruct(&sCommand, READ_STATUS_REG_CMD, false, 0, 2, false);
+
+	if (res == HAL_OK)
+	{
+		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	}
+
+	return res;
+}
+
+static uint8_t QSPI_AutoPollingMemReady(void)
+{
+	OSPI_AutoPollingTypeDef sConfig = {};
+	HAL_StatusTypeDef res = HAL_OK;
+
+	// todo: "avoid the auto-poll operations"
+
+	res = QSPI_AutoPollingSetup();
+
+	if (res == HAL_OK)
+	{
+		sConfig.Match = 0;
+		sConfig.Mask = (STATUS_REG_WIP_MASK<<0) | (STATUS_REG_WIP_MASK<<8);
+		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
+		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
+		sConfig.Interval = AUTO_POLLING_INTERVAL;
+
+		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig,	HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	}
+
+	return res;
+}
+
+static uint8_t QSPI_WriteEnable(void)
+{
+	HAL_StatusTypeDef res = HAL_OK;
+	OSPI_AutoPollingTypeDef sConfig = {};
+
+	/* Enable write operations ------------------------------------------ */
+
+	res = QSPI_Command(WRITE_ENABLE_CMD, false, 0, NULL, NULL, 0);
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_AutoPollingSetup();
+	}
+
+	if (res == HAL_OK)
+	{
+		/* Configure automatic polling mode to wait for write enabling ---- */
+
+		//check for both dies so shift mask
+		sConfig.Match = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
+		sConfig.Mask = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
+
+		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
+		sConfig.Interval = AUTO_POLLING_INTERVAL;
+		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
+
+		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+	}
+
+	return res;
+}
+
+static uint8_t QSPI_Configuration(void)
+{
+	HAL_StatusTypeDef res = HAL_OK;
+	uint8_t read_buffer[2] = { 0 };
+	uint8_t write_buffer[2] = { 0 };
+	/*read status register*/
+
+	// R-M-W dummy cycles:
+	res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_WriteEnable();
+	}
+
+	if (res == HAL_OK)
+	{
+		memcpy(write_buffer,read_buffer,2);
+
+		write_buffer[0] &= ~(((1<<4)-1)<<4);
+		write_buffer[0] |= FAST_READ_DUMMY_CYCLES << 4;
+		write_buffer[1] &= ~(((1<<4)-1)<<4);
+		write_buffer[1] |= FAST_READ_DUMMY_CYCLES << 4;
+
+		res = QSPI_Command(WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
+	}
+
+	if (res == HAL_OK)
+	{
+		memset(read_buffer, 0, 2); // clear buffer before reading
+		res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+		if (res == HAL_OK)
+		{
+			if (memcmp(read_buffer,write_buffer,2) != 0)
+			{
+				res = HAL_ERROR;
+			}
+		}
+	}
+
+	// R-M-W dummy cycles:
+
+	if (res == HAL_OK)
+	{
+		memset(read_buffer, 0, 2); // clear buffer before reading
+		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+	}
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_WriteEnable();
+	}
+
+	if (res == HAL_OK)
+	{
+		memcpy(write_buffer,read_buffer,2);
+		//TODO remove magic numbers
+		write_buffer[0] |= ((1<<2)-1)<<6;
+		write_buffer[0] &= ~(1 << 7); // enable Quad mode
+		write_buffer[1] |= ((1<<2)-1)<<6;
+		write_buffer[1] &= ~(1 << 7); // enable Quad mode
+
+#ifdef USE_COMMAND_DTR
+		write_buffer[0] &= ~(1 << 5); // enable DTR mode
+		write_buffer[1] &= ~(1 << 5); // enable DTR mode
+		DualQuadState.switchingToDtr = true;
+#endif
+
+		DualQuadState.switchingToQuad = true; // skip auto polling
+		res = QSPI_Command(WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
+		DualQuadState.switchingToQuad = false;
+#ifdef USE_COMMAND_DTR
+		DualQuadState.switchingToDtr = false;
+#endif
+	}
+
+	if (res == HAL_OK)
+	{
+		memset(read_buffer, 0, 2); // clear buffer before reading
+		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
+
+		if (res == HAL_OK)
+		{
+			if (memcmp(read_buffer,write_buffer,2) != 0)
+			{
+				res = HAL_ERROR;
+			}
+		}
+	}
+
+	return res;
+}
 
 static uint8_t QSPI_ResetChip()
 {

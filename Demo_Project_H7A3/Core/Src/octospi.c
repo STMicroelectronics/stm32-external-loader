@@ -622,7 +622,7 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 //	OSPI_RegularCmdTypeDef sCommand = {};
 	HAL_StatusTypeDef res = HAL_OK;
 
-	EraseStartAddress &= (MEMORY_DUAL_SECTOR_SIZE - 1);
+	EraseStartAddress &= ~(MEMORY_DUAL_SECTOR_SIZE - 1);
 
 	/* Erasing Sequence -------------------------------------------------- */
 

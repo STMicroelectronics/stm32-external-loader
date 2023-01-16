@@ -101,7 +101,7 @@ int main(void)
 
   	res = CSP_QUADSPI_Init();
 
-  	while(!testFlash); // make high with debugger to proceed to test
+  	while(!testFlash); // set to true with debugger to proceed to test
 
   	for (sectorIndex = 0; sectorIndex < MEMORY_DUAL_SECTOR_SIZE; sectorIndex++)
   	{
@@ -142,9 +142,9 @@ int main(void)
 
   	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
+  		buffer_test[0] = sectorIndex+1;
   		address = 0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
-  		if (((*(const uint8_t*)address) == sectorIndex) &&
-  			(memcmp(buffer_test+1,	(uint8_t*) (address+1), MEMORY_DUAL_SECTOR_SIZE-1) != 0))
+  		if (memcmp(buffer_test,	(uint8_t*) (address), MEMORY_DUAL_SECTOR_SIZE) != 0)
   		{
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}

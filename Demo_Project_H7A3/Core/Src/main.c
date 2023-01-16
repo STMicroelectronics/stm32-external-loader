@@ -142,7 +142,9 @@ int main(void)
 
   	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
-  		if (memcmp(buffer_test+1,	(uint8_t*) (0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE+1), 100-1) != 0)
+  		address = 0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
+  		if (((*(const uint8_t*)address) == sectorIndex) &&
+  			(memcmp(buffer_test+1,	(uint8_t*) (address+1), MEMORY_DUAL_SECTOR_SIZE-1) != 0))
   		{
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}

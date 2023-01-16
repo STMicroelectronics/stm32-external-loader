@@ -44,23 +44,16 @@
 #define WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x61
 
 
-
-//#define DUMMY_CLOCK_CYCLES_READ_QUAD 10  // todo: check which one is this? sometimes 0,4,8 or 10
-#define FAST_READ_DUMMY_CYCLES 10
-
-#define AUTO_POLLING_INTERVAL 16 // todo check
-
 #define STATUS_REG_WIP_MASK (1UL<<0)
 #define STATUS_REG_WEL_MASK (1UL<<1)
 
-
+#define MT25TL256_MAX_CLK_STR (133*1000*1000)
+#define MT25TL256_MAX_CLK_DTR (90*1000*1000)
 
 
 //#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
-#define USE_READ_DTR // if enabled DDR_FAST_READ_CMD will be used
+#define USE_READ_DTR // if enabled DTR_FAST_READ_CMD will be used
 
-#define MT25TL256_MAX_CLK_STR (133*1000*1000)
-#define MT25TL256_MAX_CLK_DTR (90*1000*1000)
 
 // TODO use this:
 #if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
@@ -68,6 +61,10 @@
 #else
 #define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_STR
 #endif
+
+#define FAST_READ_DUMMY_CYCLES 11 // (11 is needed in STR and 9 in DTR, less needed in case of lower clocks)
+
+#define AUTO_POLLING_INTERVAL 16 // todo check
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(void);

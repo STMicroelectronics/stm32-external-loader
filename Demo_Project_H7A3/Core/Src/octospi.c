@@ -29,6 +29,7 @@
 #define READ_STATUS_REG_CMD 0x05			// READ STATUS REGISTER
 //#define WRITE_STATUS_REG_CMD 0x01			// WRITE STATUS REGISTER
 #define SECTOR_ERASE_CMD 0x20 				// 4KiB SUBSECTOR ERASE
+#define PAGE_PROGRAM_CMD 0x02				// PAGE PROGRAM, program 1-256 bytes (cannot cross page boundary)
 #define CHIP_ERASE_CMD 0xC7 				// 128Mib BULK ERASE (for each die, so 256Mib total)
 #define QUAD_IN_FAST_PROG_CMD 0x38 			// EXTENDED QUAD INPUT FAST PROGRAM
 
@@ -72,7 +73,7 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 										uint8_t command,
 										bool hasAddress,
 										uint32_t address,
-										uint8_t dataLength,
+										size_t dataLength,
 										bool write
 										);
 
@@ -664,10 +665,12 @@ uint8_t CSP_QSPI_ReadMemory(uint8_t* buffer, uint32_t address, uint32_t buffer_s
 
 uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t buffer_size)
 {
-	OSPI_RegularCmdTypeDef sCommand = {};
+//	OSPI_RegularCmdTypeDef sCommand = {};
+//	OSPI_RegularCmdTypeDef sCommand2 = {};
 	uint32_t current_size; //number of bytes to write in current operation
 	uint32_t current_addr; //start address to write to in current operation
 	uint32_t bytesRemainingInPage;
+	HAL_StatusTypeDef res = HAL_OK;
 
 	//todo check size in command since half the data goes to one die and half the data goes to the other die
 
@@ -679,53 +682,78 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 	/* Initialize the address variables */
 
 
-	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
-	sCommand.FlashId = 0; //only applies if Dualquad is disabled
-	sCommand.Instruction = 0x02; // page program
-	sCommand.InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
-	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
-	sCommand.InstructionDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_INSTRUCTION_DTR_ENABLE : HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-	sCommand.Address = address;
-	sCommand.AddressMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_ADDRESS_4_LINES : HAL_OSPI_ADDRESS_1_LINE;
-	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
-	sCommand.AddressDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_ADDRESS_DTR_ENABLE : HAL_OSPI_ADDRESS_DTR_DISABLE;
-	sCommand.AlternateBytes = 0;
-	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
-	sCommand.AlternateBytesSize = 0;
-	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
-	sCommand.DataMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_DATA_4_LINES : HAL_OSPI_DATA_1_LINE;
-	sCommand.NbData = current_size;
-	sCommand.DataDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_DATA_DTR_ENABLE : HAL_OSPI_DATA_DTR_DISABLE;
-	sCommand.DummyCycles = 0;
-	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
-	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
+//	sCommand.OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; //?
+//	sCommand.FlashId = 0; //only applies if Dualquad is disabled
+//	sCommand.Instruction = PAGE_PROGRAM_CMD; // page program
+//	sCommand.InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
+//	sCommand.InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
+//	sCommand.InstructionDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_INSTRUCTION_DTR_ENABLE : HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+//	sCommand.Address = address;
+//	sCommand.AddressMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_ADDRESS_4_LINES : HAL_OSPI_ADDRESS_1_LINE;
+//	sCommand.AddressSize = HAL_OSPI_ADDRESS_24_BITS;
+//	sCommand.AddressDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_ADDRESS_DTR_ENABLE : HAL_OSPI_ADDRESS_DTR_DISABLE;
+//	sCommand.AlternateBytes = 0;
+//	sCommand.AlternateBytesMode = HAL_OSPI_ALTERNATE_BYTES_NONE;
+//	sCommand.AlternateBytesSize = 0;
+//	sCommand.AlternateBytesDtrMode = HAL_OSPI_ALTERNATE_BYTES_DTR_DISABLE;
+//	sCommand.DataMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_DATA_4_LINES : HAL_OSPI_DATA_1_LINE;
+//	sCommand.NbData = current_size;
+//	sCommand.DataDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_DATA_DTR_ENABLE : HAL_OSPI_DATA_DTR_DISABLE;
+//	sCommand.DummyCycles = 0;
+//	sCommand.DQSMode = HAL_OSPI_DQS_DISABLE; // no data strobe used
+//	sCommand.SIOOMode = HAL_OSPI_SIOO_INST_EVERY_CMD;
+//
+//	sCommand.Address = current_addr;
+//	sCommand.NbData = current_size;
+	
+//	QSPI_InitCommandStruct(&sCommand, PAGE_PROGRAM_CMD, true, current_addr, current_size, true);
+	
+//	QSPI_InitCommandStruct(&sCommand2, PAGE_PROGRAM_CMD, true, current_addr, current_size, true);
+
+//	uint8_t command,
+//	bool hasAddress,
+//	uint32_t address,
+//	uint8_t dataLength,
+//	bool write
 
 	/* Perform the write page by page */
 	do {
-		sCommand.Address = current_addr;
-		sCommand.NbData = current_size;
+//		sCommand.Address = current_addr;
+//		sCommand.NbData = current_size;
 
 		/* Enable write operations */
-		if (QSPI_WriteEnable() != HAL_OK) {
-			return HAL_ERROR;
+		res = QSPI_WriteEnable();
+		if (res != HAL_OK)
+		{
+			break;
 		}
 
-		/* Configure the command */
-		if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)
-				!= HAL_OK) {
 
-			return HAL_ERROR;
+//		/* Configure the command */
+//		if (HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE)
+//				!= HAL_OK) {
+//
+//			return HAL_ERROR;
+//		}
+//
+//		/* Transmission of the data */
+//		if (HAL_OSPI_Transmit(&hospi1, (uint8_t*)buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
+//			return HAL_ERROR;
+//		}
+//
+//		/* Configure automatic polling mode to wait for end of program */
+//		if (QSPI_AutoPollingMemReady() != HAL_OK) {
+//			return HAL_ERROR;
+//		}
+
+
+
+		res = QSPI_Command(PAGE_PROGRAM_CMD, true, current_addr, buffer, NULL, current_size);
+		if (res != HAL_OK)
+		{
+			break;
 		}
 
-		/* Transmission of the data */
-		if (HAL_OSPI_Transmit(&hospi1, (uint8_t*)buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
-			return HAL_ERROR;
-		}
-
-		/* Configure automatic polling mode to wait for end of program */
-		if (QSPI_AutoPollingMemReady() != HAL_OK) {
-			return HAL_ERROR;
-		}
 
 		/* Update the address and size variables for next page programming */
 		buffer_size -= current_size;
@@ -737,7 +765,7 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 
 	} while (current_size);
 
-	return HAL_OK;
+	return res;
 }
 
 
@@ -804,7 +832,7 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 										uint8_t command,
 										bool hasAddress,
 										uint32_t address,
-										uint8_t dataLength,
+										size_t dataLength,
 										bool write
 										)
 {

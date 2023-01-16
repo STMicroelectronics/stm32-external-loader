@@ -36,16 +36,19 @@ extern OSPI_HandleTypeDef hospi1;
 
 /* USER CODE BEGIN Private defines */
 
-//MT25TL256 memory parameters
-#define MEMORY_FLASH_SIZE	(32UL << 20)	// 256 Mib => 32MiB
-#define MEMORY_BLOCK_SIZE	(64UL << 10)   	// 512 sectors of 64KiB
-#define MEMORY_SECTOR_SIZE	(4UL << 10)   	// 8192 subsectors of 4KiB
-#define MEMORY_PAGE_SIZE	256     		// 131072 pages of 256B
+//MT25TL256 memory parameters (single die specs):
+#define MEMORY_FLASH_SIZE	(16UL << 20)	// 128 Mib => 16MiB
+//#define MEMORY_BLOCK_SIZE	(?UL << 10)   	// ? sectors of ?KiB
+#define MEMORY_SECTOR_SIZE	(4UL << 10)   	// 4096 subsectors of 4KiB
+#define MEMORY_PAGE_SIZE	256     		// 65536 pages of 256B
+#define SECTORS_COUNT (MEMORY_FLASH_SIZE / MEMORY_SECTOR_SIZE)
 
+//MT25TL256 memory parameters (twin die specs):
+#define MEMORY_DUAL_FLASH_SIZE (MEMORY_FLASH_SIZE*2)
 #define MEMORY_DUAL_PAGE_SIZE (MEMORY_PAGE_SIZE*2)
 #define MEMORY_DUAL_SECTOR_SIZE (MEMORY_SECTOR_SIZE*2)
 
-#define SECTORS_COUNT (MEMORY_FLASH_SIZE / MEMORY_SECTOR_SIZE)
+
 
 
 

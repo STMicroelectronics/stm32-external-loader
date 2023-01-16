@@ -34,6 +34,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+//#define TEST
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -55,10 +56,11 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+#ifdef TEST
 static uint8_t buffer_test[MEMORY_DUAL_SECTOR_SIZE];
 static uint8_t buffer_test_read[MEMORY_DUAL_SECTOR_SIZE];
 #define NUMBER_OF_SECTORS_TO_TEST 4
+#endif
 /* USER CODE END 0 */
 
 /**
@@ -69,11 +71,13 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	HAL_StatusTypeDef res = HAL_OK;
+#ifdef TEST
 	volatile bool testFlash = false; // make high with debugger
 
   	uint32_t sectorIndex = 0;
   	uint32_t address;
   	uint32_t byteIndex;
+#endif
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -108,7 +112,7 @@ int main(void)
 	{
 		while (1);  //breakpoint - error detected
 	}
-
+#ifdef TEST
   	while(!testFlash); // set to true with debugger to proceed to test
 
   	for (sectorIndex = 0; sectorIndex < MEMORY_DUAL_SECTOR_SIZE; sectorIndex++)
@@ -162,6 +166,7 @@ int main(void)
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}
   	}
+#endif
   /* USER CODE END 2 */
 
   /* Infinite loop */

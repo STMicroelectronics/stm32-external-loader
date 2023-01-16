@@ -16,8 +16,8 @@ struct StorageInfo const StorageInfo =
 	"STM32H7A3ZIT6Q_MT25TL256", 	     // Device Name + version number
 	NOR_FLASH,                  		 // Device Type
 	0x90000000,                			 // Device Start Address
-	MEMORY_FLASH_SIZE*2,                 	 // Device Size in Bytes
-	MEMORY_PAGE_SIZE*2,                    // Programming Page Size
+	MEMORY_FLASH_SIZE*2,                 // Device Size in Bytes
+	MEMORY_PAGE_SIZE*2,                  // Programming Page Size
 	0xFF,                                // Initial Content of Erased Memory
 
 	// Specify Size and Address of Sectors (view example below)

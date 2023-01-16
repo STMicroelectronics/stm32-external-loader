@@ -36,12 +36,15 @@
 #define RESET_EXECUTE_CMD 0x99 				// RESET MEMORY
 #define READ_ID_CMD 0xAF					// MULTIPLE I/O READ ID (supports 1-1-1,2-2-2, 4-4-4
 //DTR commands (commands with command in STR and with address and data in DTR when device is not in DTR mode)
-#define DTR_FAST_READ_CMD 0x0D // DTR FAST READ, TODO: use this
+#define DTR_FAST_READ_CMD 0x0D 				// DTR FAST READ
 //configuration register commands:
 #define READ_VOLATILE_CONFIGURATION_REGISTER_CMD 0x85
 #define WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD 0x81
 #define READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x65
 #define WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x61
+
+#define ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE 	(1<<7)
+#define ENHANCED_VOLATILE_CONFIGURATION_REGISTER_DTR_DISABLE 	(1<<5)
 
 
 #define STATUS_REG_WIP_MASK (1UL<<0)
@@ -54,8 +57,6 @@
 //#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
 #define USE_READ_DTR // if enabled DTR_FAST_READ_CMD will be used
 
-
-// TODO use this:
 #if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
 #define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_DTR
 #else
@@ -64,14 +65,14 @@
 
 #define FAST_READ_DUMMY_CYCLES 11 // (11 is needed in STR and 9 in DTR, less needed in case of lower clocks)
 
-#define AUTO_POLLING_INTERVAL 16 // todo check
+#define AUTO_POLLING_INTERVAL 16 // TODO: find out optimal polling interval
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(void);
 static uint8_t QSPI_Configuration(void);
 static uint8_t QSPI_ResetChip(void);
-
 static uint8_t QSPI_ReadChipId(void);
+static uint8_t QSPI_AutoPollingSetup(void);
 
 static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 										uint8_t command,
@@ -87,8 +88,6 @@ static uint8_t QSPI_Command(uint8_t command,
 							const uint8_t* writeData,
 							uint8_t* readData,
 							size_t dataLength);
-
-static uint8_t QSPI_AutoPollingSetup(void);
 
 
 typedef union
@@ -365,7 +364,7 @@ uint8_t CSP_QUADSPI_Init(void) {
 		res = QSPI_ResetChip();
 	}
 
-	HAL_Delay(1); // todo remove magic number
+	HAL_Delay(1); // TODO: use correct delay value from datasheet
 
 	if (res == HAL_OK)
 	{
@@ -504,7 +503,7 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 
 //	/* Initialize memory-mapped mode for write operations */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
-	sCommand.Instruction = 0;// todo check if this is correct
+	sCommand.Instruction = 0;// TODO: check if this is the correct way to disable memory-mapped write
 	sCommand.DummyCycles = 0; // ?
 	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
 
@@ -652,15 +651,13 @@ static uint8_t QSPI_Configuration(void)
 	if (res == HAL_OK)
 	{
 		memcpy(write_buffer,read_buffer,2);
-		//TODO remove magic numbers
-		write_buffer[0] |= ((1<<2)-1)<<6;
-		write_buffer[0] &= ~(1 << 7); // enable Quad mode
-		write_buffer[1] |= ((1<<2)-1)<<6;
-		write_buffer[1] &= ~(1 << 7); // enable Quad mode
+
+		write_buffer[0] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE; // enable Quad mode
+		write_buffer[1] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE; // enable Quad mode
 
 #ifdef USE_COMMAND_DTR
-		write_buffer[0] &= ~(1 << 5); // enable DTR mode
-		write_buffer[1] &= ~(1 << 5); // enable DTR mode
+		write_buffer[0] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_DTR_DISABLE; // enable DTR mode
+		write_buffer[1] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_DTR_DISABLE; // enable DTR mode
 		DualQuadState.switchingToDtr = true;
 #endif
 
@@ -699,12 +696,7 @@ static uint8_t QSPI_ResetChip()
 
 	if (res == HAL_OK)
 	{
-		//delay
-		//todo remove magic number
-		for (temp = 0; temp < 47; temp++)
-		{
-			__NOP();
-		}
+		HAL_Delay(1); // TODO: use correct delay value from datasheet
 
 		res = QSPI_Command(RESET_EXECUTE_CMD, false, 0, NULL, NULL, 0);
 	}
@@ -752,7 +744,12 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 {
 	HAL_StatusTypeDef res = HAL_OK;
 
-	//TODO check params
+	if (sCommandPtr == NULL)
+	{
+		res = HAL_ERROR;
+		return res;
+	}
+
 
 	sCommandPtr->OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; // called by a function call
 	sCommandPtr->FlashId = 0; //only applies if Dualquad is disabled
@@ -761,11 +758,12 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 	sCommandPtr->InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommandPtr->InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
 	sCommandPtr->InstructionDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_INSTRUCTION_DTR_ENABLE : HAL_OSPI_INSTRUCTION_DTR_DISABLE;
+//	sCommandPtr->InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 
 	if (hasAddress)
 	{
 		sCommandPtr->AddressMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_ADDRESS_4_LINES : HAL_OSPI_ADDRESS_1_LINE;
-		sCommandPtr->Address = address; // todo check if this is correct
+		sCommandPtr->Address = address; // peripheral will automatically convert this to correct address for each die
 
 		if ((command == 0xE2) || (command == 0xE3)) // these commands are the only ones with 4 byte address
 		{
@@ -819,9 +817,6 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 		sCommandPtr->DataDtrMode = HAL_OSPI_DATA_DTR_DISABLE;
 	}
 
-	//TODO set FAST_READ_DUMMY_CYCLES
-
-
 	if ((sCommandPtr->Instruction == FAST_READ_CMD) || (sCommandPtr->Instruction == DTR_FAST_READ_CMD))
 	{
 		sCommandPtr->DummyCycles = FAST_READ_DUMMY_CYCLES;
@@ -844,8 +839,6 @@ static uint8_t QSPI_Command(uint8_t command,
 							uint8_t* readData,
 							size_t dataLength)
 {
-	// todo add line width option and dtr option
-
 	OSPI_RegularCmdTypeDef sCommand = {0};
 	HAL_StatusTypeDef res = HAL_OK;
 
@@ -865,7 +858,6 @@ static uint8_t QSPI_Command(uint8_t command,
 	{
 		res = QSPI_InitCommandStruct(&sCommand, command, hasAddress, address, 0, false);
 	}
-
 
 
 	if (res == HAL_OK)
@@ -903,7 +895,6 @@ static uint8_t QSPI_Command(uint8_t command,
 			}
 			else // writeData!= NULL
 			{
-				//memset(readData, 0, dataLength); // clear buffer before reading
 				res = HAL_OSPI_Receive(&hospi1, readData, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 			}
 		}

@@ -688,7 +688,6 @@ static uint8_t QSPI_Configuration(void)
 
 static uint8_t QSPI_ResetChip()
 {
-	uint32_t temp = 0;
 	HAL_StatusTypeDef res = HAL_OK;
 	/* Erasing Sequence -------------------------------------------------- */
 

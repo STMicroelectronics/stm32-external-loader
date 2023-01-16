@@ -104,6 +104,11 @@ int main(void)
 
   	res = CSP_QUADSPI_Init();
 
+	if (res != HAL_OK)
+	{
+		while (1);  //breakpoint - error detected
+	}
+
   	while(!testFlash); // set to true with debugger to proceed to test
 
   	for (sectorIndex = 0; sectorIndex < MEMORY_DUAL_SECTOR_SIZE; sectorIndex++)
@@ -119,8 +124,6 @@ int main(void)
 		{
   			while (1);  //breakpoint - error detected
   		}
-
-  		//HAL_Delay(10); // todo remove magic number
 
   		buffer_test[0] = sectorIndex+1;
   		res = CSP_QSPI_WriteMemory(buffer_test, sectorIndex * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));

@@ -56,8 +56,8 @@
 #define MT25TL256_MAX_CLK (90*1000*1000) // TODO use this
 
 
-//#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used
-#define USE_READ_DTR // if enabled
+//#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
+//#define USE_READ_DTR // if enabled DDR_FAST_READ_CMD will be used
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(void);
@@ -347,9 +347,7 @@ uint8_t CSP_QUADSPI_Init(void) {
 		res = QSPI_ResetChip();
 	}
 
-
 	HAL_Delay(1); // todo remove magic number
-
 
 	if (res == HAL_OK)
 	{
@@ -366,24 +364,11 @@ uint8_t CSP_QUADSPI_Init(void) {
 		res = QSPI_Configuration();
 	}
 
-//	if (res == HAL_OK)
-//	{
-//		res = QSPI_ReadChipId();
-//	}
-//
-//	if (res != HAL_OK)
-//	{
-//		res = QSPI_ReadChipId();
-//	}
-
-
 
 	if (res != HAL_OK)
 	{
 		errorCode.errorCode = hospi1.ErrorCode;
 	}
-
-
 
 	(void)errorCode;
 
@@ -401,6 +386,7 @@ static uint8_t QSPI_AutoPollingSetup(void)
 	OSPI_RegularCmdTypeDef sCommand = {0};
 	HAL_StatusTypeDef res = HAL_OK;
 
+	// 2 bytes so both dies are checked
 	res = QSPI_InitCommandStruct(&sCommand, READ_STATUS_REG_CMD, false, 0, 2, false);
 
 	if (res == HAL_OK)
@@ -453,12 +439,9 @@ static uint8_t QSPI_WriteEnable(void)
 	{
 		/* Configure automatic polling mode to wait for write enabling ---- */
 
-
+		//check for both dies so shift mask
 		sConfig.Match = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
 		sConfig.Mask = STATUS_REG_WEL_MASK | (STATUS_REG_WEL_MASK<<8);
-
-//		sConfig.Match = STATUS_REG_WEL_MASK;
-//		sConfig.Mask = STATUS_REG_WEL_MASK;
 
 		sConfig.MatchMode = HAL_OSPI_MATCH_MODE_AND;
 		sConfig.Interval = AUTO_POLLING_INTERVAL;
@@ -547,10 +530,8 @@ static uint8_t QSPI_Configuration(void)
 #endif
 	}
 
-	// TODO: find out why this doesn't work
 	if (res == HAL_OK)
 	{
-
 		memset(read_buffer, 0, 2); // clear buffer before reading
 		res = QSPI_Command(READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
 
@@ -563,13 +544,11 @@ static uint8_t QSPI_Configuration(void)
 		}
 	}
 
-
 	return res;
 }
 
 uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 {
-//	OSPI_RegularCmdTypeDef sCommand = {};
 	HAL_StatusTypeDef res = HAL_OK;
 
 	EraseStartAddress &= ~(MEMORY_DUAL_SECTOR_SIZE - 1); // mask lower bits of address, only an entire sector can be erased
@@ -579,7 +558,6 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 
 	while (EraseEndAddress >= EraseStartAddress)
 	{
-
 		res = QSPI_WriteEnable();
 		if (res != HAL_OK)
 		{
@@ -587,20 +565,12 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 		}
 
 		res = QSPI_Command(SECTOR_ERASE_CMD, true, EraseStartAddress, NULL, NULL, 0);
-
 		if (res != HAL_OK)
 		{
 			break;
 		}
 
 		EraseStartAddress += MEMORY_DUAL_SECTOR_SIZE;
-
-		res = QSPI_AutoPollingMemReady();
-
-		if (res != HAL_OK)
-		{
-			break;
-		}
 	}
 
 	return res;
@@ -608,27 +578,13 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 
 uint8_t CSP_QSPI_ReadMemory(uint8_t* buffer, uint32_t address, uint32_t buffer_size)
 {
-	OSPI_RegularCmdTypeDef sCommand = {};
 	HAL_StatusTypeDef res = HAL_OK;
 
 #ifdef USE_READ_DTR
-	res = QSPI_InitCommandStruct(&sCommand, DTR_FAST_READ_CMD, true, address, buffer_size, false);
+	res = QSPI_Command(DTR_FAST_READ_CMD, true, address, NULL, buffer, buffer_size);
 #else
-	res = QSPI_InitCommandStruct(&sCommand, FAST_READ_CMD, true, address, buffer_size, false);
+	res = QSPI_Command(FAST_READ_CMD, true, address, NULL, buffer, buffer_size);
 #endif
-
-
-	// Configure the command
-	if (res == HAL_OK)
-	{
-		res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	}
-
-	if (res == HAL_OK)
-	{
-		// read of the data
-		res = HAL_OSPI_Receive(&hospi1, buffer, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-	}
 
 	return res;
 }
@@ -639,8 +595,6 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 	uint32_t current_addr; //start address to write to in current operation
 	uint32_t bytesRemainingInPage;
 	HAL_StatusTypeDef res = HAL_OK;
-
-	//todo check size in command since half the data goes to one die and half the data goes to the other die
 
 	current_addr = address;
 
@@ -690,18 +644,13 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 #else
 	QSPI_InitCommandStruct(&sCommand, FAST_READ_CMD, true, 0, 1, false);
 #endif
-
-	QSPI_InitCommandStruct(&sCommand, FAST_READ_CMD, true, 0, 1, false);
 	sCommand.OperationType = HAL_OSPI_OPTYPE_READ_CFG; // memory map instruction, called by peripheral, not with function
 
 	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
-
-
 	if (res !=HAL_OK)
 	{
 		Error_Handler();
 	}
-
 
 //	/* Initialize memory-mapped mode for write operations */
 	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
@@ -754,8 +703,6 @@ static uint8_t QSPI_ResetChip()
 	return res;
 }
 
-
-
 static uint8_t QSPI_ReadChipId(void)
 {
 	uint8_t test_buffer[3*2] = { 0 };
@@ -779,8 +726,6 @@ static uint8_t QSPI_ReadChipId(void)
 
 	return res;
 }
-
-
 
 static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 										uint8_t command,
@@ -941,10 +886,17 @@ static uint8_t QSPI_Command(uint8_t command,
 					res = QSPI_AutoPollingMemReady();
 				}
 			}
-			else
+			else // writeData!= NULL
 			{
 				//memset(readData, 0, dataLength); // clear buffer before reading
 				res = HAL_OSPI_Receive(&hospi1, readData, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+			}
+		}
+		else
+		{
+			if (command == SECTOR_ERASE_CMD)
+			{
+				res = QSPI_AutoPollingMemReady();
 			}
 		}
 	}

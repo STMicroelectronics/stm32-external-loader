@@ -70,6 +70,10 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	HAL_StatusTypeDef res = HAL_OK;
 	volatile bool testFlash = false; // make high with debugger
+
+  	uint32_t sectorIndex = 0;
+  	uint32_t address;
+  	uint32_t byteIndex;
   /* USER CODE END 1 */
 
   /* Enable I-Cache---------------------------------------------------------*/
@@ -96,8 +100,7 @@ int main(void)
   MX_OCTOSPI1_Init();
   /* USER CODE BEGIN 2 */
 	
-  	uint32_t sectorIndex = 0;
-  	uint32_t address;
+
 
   	res = CSP_QUADSPI_Init();
 
@@ -117,7 +120,7 @@ int main(void)
   			while (1);  //breakpoint - error detected
   		}
 
-  		HAL_Delay(10); // todo remove magic number
+  		//HAL_Delay(10); // todo remove magic number
 
   		buffer_test[0] = sectorIndex+1;
   		res = CSP_QSPI_WriteMemory(buffer_test, sectorIndex * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
@@ -146,6 +149,13 @@ int main(void)
   		address = 0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
   		if (memcmp(buffer_test,	(uint8_t*) (address), MEMORY_DUAL_SECTOR_SIZE) != 0)
   		{
+  			for(byteIndex = 0; byteIndex < MEMORY_DUAL_SECTOR_SIZE; ++byteIndex)
+  			{
+  				if ( buffer_test[byteIndex] != ((uint8_t*)(address))[byteIndex])
+				{
+					break;
+  				}
+  			}
   			while (1);  //breakpoint - error detected - otherwise QSPI works properly
   		}
   	}

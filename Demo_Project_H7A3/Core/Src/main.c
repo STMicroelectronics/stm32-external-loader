@@ -153,7 +153,7 @@ int main(void)
   	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
   		buffer_test[0] = sectorIndex+1;
-  		address = 0x90000000 + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
+  		address = MEMORY_MAPPED_START_ADDRESS + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
   		if (memcmp(buffer_test,	(uint8_t*) (address), MEMORY_DUAL_SECTOR_SIZE) != 0)
   		{
   			for(byteIndex = 0; byteIndex < MEMORY_DUAL_SECTOR_SIZE; ++byteIndex)

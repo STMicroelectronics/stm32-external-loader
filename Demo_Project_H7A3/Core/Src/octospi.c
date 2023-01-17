@@ -24,8 +24,11 @@
 #include <stdbool.h>
 #include <string.h> // for memset
 
-//MT25TL256 commands:
+//settings:
+//#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
+#define USE_READ_DTR // if enabled DTR_FAST_READ_CMD will be used
 
+//MT25TL256 commands:
 #define WRITE_ENABLE_CMD 0x06				// WRITE ENABLE
 #define READ_STATUS_REG_CMD 0x05			// READ STATUS REGISTER
 #define SECTOR_ERASE_CMD 0x20 				// 4KiB SUBSECTOR ERASE
@@ -43,19 +46,16 @@
 #define READ_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x65
 #define WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD 0x61
 
+//bit fields:
 #define ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE 	(1<<7)
 #define ENHANCED_VOLATILE_CONFIGURATION_REGISTER_DTR_DISABLE 	(1<<5)
-
 
 #define STATUS_REG_WIP_MASK (1UL<<0)
 #define STATUS_REG_WEL_MASK (1UL<<1)
 
+//timing:
 #define MT25TL256_MAX_CLK_STR (133*1000*1000)
 #define MT25TL256_MAX_CLK_DTR (90*1000*1000)
-
-
-//#define USE_COMMAND_DTR // if enabled dtr for command phase + address + data will be used, doesn't work
-#define USE_READ_DTR // if enabled DTR_FAST_READ_CMD will be used
 
 #if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
 #define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_DTR
@@ -654,6 +654,7 @@ static uint8_t QSPI_Configuration(void)
 
 		write_buffer[0] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE; // enable Quad mode
 		write_buffer[1] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_QUAD_DISABLE; // enable Quad mode
+		DualQuadState.switchingToQuad = true; // auto polling will be done in quad mode
 
 #ifdef USE_COMMAND_DTR
 		write_buffer[0] &= ~ENHANCED_VOLATILE_CONFIGURATION_REGISTER_DTR_DISABLE; // enable DTR mode
@@ -661,7 +662,7 @@ static uint8_t QSPI_Configuration(void)
 		DualQuadState.switchingToDtr = true;
 #endif
 
-		DualQuadState.switchingToQuad = true; // skip auto polling
+
 		res = QSPI_Command(WRITE_ENHANCED_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
 		DualQuadState.switchingToQuad = false;
 #ifdef USE_COMMAND_DTR

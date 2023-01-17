@@ -1,3 +1,4 @@
+#include "Loader_Src.h"
 #include "octospi.h"
 #include "main.h"
 #include "gpio.h"
@@ -15,34 +16,19 @@ void SystemClock_Config(void);
  */
 int Init(void) {
 
-	*(uint32_t*)0xE000EDF0=0xA05F0000; //enable interrupts in debug
+	*(uint32_t*)0xE000EDF0 = 0xA05F0000; //enable interrupts in debug
 
 	SystemInit();
-
-/* ADAPTATION TO THE DEVICE
- *
- * change VTOR setting for H7 device
- * SCB->VTOR = 0x24000000 | 0x200;
- *
- * change VTOR setting for other devices
- * SCB->VTOR = 0x20000000 | 0x200;
- *
- * */
-
-	SCB->VTOR = 0x20000000 | 0x200;
-
+	SCB->VTOR = 0x24000000 | 0x200;
+	//SCB_EnableICache(); // enabling cache fails
 	HAL_Init();
-
     SystemClock_Config();
-
     MX_GPIO_Init();
+    MX_OCTOSPI1_Init();
 	
-//	__HAL_RCC_QSPI_FORCE_RESET();  //completely reset peripheral
-//    __HAL_RCC_QSPI_RELEASE_RESET();
-
-    //completely reset peripheral:
-    __HAL_RCC_OSPI1_FORCE_RESET(); // or OSPI2?
-    __HAL_RCC_OSPI1_RELEASE_RESET(); // or OSPI2?
+//    //completely reset peripheral:
+//    __HAL_RCC_OSPI1_FORCE_RESET();
+//    __HAL_RCC_OSPI1_RELEASE_RESET();
 
 
 	if (CSP_QUADSPI_Init() != HAL_OK)
@@ -58,8 +44,15 @@ int Init(void) {
 		return LOADER_FAIL;
 	}
 
-		HAL_SuspendTick();
-		return LOADER_OK;
+//	SectorErase(0,8*1024-1);
+
+//	Write(0 << 13, 15, "Hello sector 0");
+//	Write(1 << 13, 15, "Hello sector 1");
+//	Write(2 << 13, 15, "Hello sector 2");
+//	Write(3 << 13, 15, "Hello sector 3");
+
+	HAL_SuspendTick();
+	return LOADER_OK;
 }
 
 /**
@@ -70,26 +63,31 @@ int Init(void) {
  * @retval  LOADER_OK = 1		: Operation succeeded
  * @retval  LOADER_FAIL = 0	: Operation failed
  */
-int Write(uint32_t Address, uint32_t Size, uint8_t* buffer) {
-
+int Write(uint32_t Address, uint32_t Size, uint8_t* buffer)
+{
+	HAL_StatusTypeDef res = HAL_OK;
 	HAL_ResumeTick();
 
 
-	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	{
+//		HAL_SuspendTick();
+//		return LOADER_FAIL;
+//	}
+
+	HAL_OSPI_DeInit(&hospi1);
+	MX_OCTOSPI1_Init();
+
+	res = CSP_QSPI_WriteMemory((uint8_t*) buffer, Address, Size);
+
+	if (res == HAL_OK )
 	{
-		HAL_SuspendTick();
-		return LOADER_FAIL;
+		res = CSP_QSPI_EnableMemoryMappedMode();
 	}
 
+    HAL_SuspendTick();
 
-	if (CSP_QSPI_WriteMemory((uint8_t*) buffer, (Address & (0x0fffffff)),Size) != HAL_OK)
-	{
-		HAL_SuspendTick();
-		return LOADER_FAIL;
-	}
-
-	HAL_SuspendTick();
-	return LOADER_OK;
+	return res == HAL_OK ? LOADER_OK : LOADER_FAIL;
 }
 
 /**
@@ -99,25 +97,45 @@ int Write(uint32_t Address, uint32_t Size, uint8_t* buffer) {
  * @retval  LOADER_OK = 1		: Operation succeeded
  * @retval  LOADER_FAIL = 0	: Operation failed
  */
-int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress) {
+int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
+{
+	HAL_StatusTypeDef res = HAL_OK;
 
 	HAL_ResumeTick();
 
-	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	{
+//		HAL_SuspendTick();
+//		return LOADER_FAIL;
+//	}
+
+	//doesn't work:
+//	HAL_OSPI_Abort(&hospi1);
+
+	//does work, but too long:
+	HAL_OSPI_DeInit(&hospi1);
+	MX_OCTOSPI1_Init();
+
+//	uint32_t stateCopy = hospi1.State;
+//    MODIFY_REG(hospi1.Instance->CR, (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE), 0);
+//    hospi1.State = HAL_OSPI_STATE_READY;
+
+//    res = HAL_OSPI_Abort(&hospi1);
+
+
+	res = CSP_QSPI_EraseSector(EraseStartAddress, EraseEndAddress);
+
+//    MODIFY_REG(hospi1.Instance->CR, (OCTOSPI_CR_TCEN | OCTOSPI_CR_FMODE), (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE));
+//    hospi1.State = stateCopy;
+
+	if (res == HAL_OK )
 	{
-		HAL_SuspendTick();
-		return LOADER_FAIL;
+		res = CSP_QSPI_EnableMemoryMappedMode();
 	}
 
+    HAL_SuspendTick();
 
-	if (CSP_QSPI_EraseSector(EraseStartAddress, EraseEndAddress) != HAL_OK)
-	{
-		HAL_SuspendTick();
-		return LOADER_FAIL;
-	}
-
-	HAL_SuspendTick();
-	return LOADER_OK;
+	return res == HAL_OK ? LOADER_OK : LOADER_FAIL;
 }
 
 /**
@@ -130,26 +148,31 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress) {
  *     none
  * Note: Optional for all types of device
  */
-int MassErase(void) {
-
+int MassErase(void)
+{
+	HAL_StatusTypeDef res = HAL_OK;
 	HAL_ResumeTick();
 
 
-	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	if(HAL_OSPI_Abort(&hospi1) != HAL_OK)
+//	{
+//		HAL_SuspendTick();
+//		return LOADER_FAIL;
+//	}
+
+	HAL_OSPI_DeInit(&hospi1);
+	MX_OCTOSPI1_Init();
+
+	res = CSP_QSPI_Erase_Chip();
+
+	if (res == HAL_OK )
 	{
-		HAL_SuspendTick();
-		return LOADER_FAIL;
+		res = CSP_QSPI_EnableMemoryMappedMode();
 	}
 
+    HAL_SuspendTick();
 
-	if (CSP_QSPI_Erase_Chip() != HAL_OK)
-	{
-		 HAL_SuspendTick();
-		return LOADER_FAIL;
-	}
-
-	HAL_SuspendTick();
-	return LOADER_OK;
+	return res == HAL_OK ? LOADER_OK : LOADER_FAIL;
 }
 
 /**

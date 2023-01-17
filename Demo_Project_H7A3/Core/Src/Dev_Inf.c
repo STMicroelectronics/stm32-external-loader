@@ -13,15 +13,15 @@ __root struct StorageInfo const StorageInfo  =
 struct StorageInfo const StorageInfo =
 {
 #endif
-	"STM32H7A3ZIT6Q_MT25TL256", 	     // Device Name + version number
-	NOR_FLASH,                  		 // Device Type
-	0x90000000,                			 // Device Start Address
-	MEMORY_FLASH_SIZE*2,                 // Device Size in Bytes
-	MEMORY_PAGE_SIZE*2,                  // Programming Page Size
-	0xFF,                                // Initial Content of Erased Memory
+	"STM32H7A3ZIT6Q_MT25TL256", 	    // Device Name + version number
+	NOR_FLASH,                  		// Device Type
+	0x90000000,                			// Device Start Address
+	MEMORY_DUAL_FLASH_SIZE,             // Device Size in Bytes
+	MEMORY_DUAL_PAGE_SIZE,				// Programming Page Size
+	0xFF,                               // Initial Content of Erased Memory
 
 	// Specify Size and Address of Sectors (view example below)
-	{{(MEMORY_FLASH_SIZE / MEMORY_SECTOR_SIZE),	// number of sectors,
-	  (uint32_t) MEMORY_SECTOR_SIZE*2},       	// sector size
-	  {0x00000000, 0x00000000}}					// no additional sectors (all sectors are the same size)
+	{{SECTORS_COUNT,						// number of sectors,
+	  (uint32_t) MEMORY_DUAL_SECTOR_SIZE},  // sector size
+	  {0x00000000, 0x00000000}}				// no additional sectors (all sectors are the same size)
 };

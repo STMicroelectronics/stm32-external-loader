@@ -23,12 +23,12 @@ struct DeviceSectors
 
 struct StorageInfo
 {
-   char       		 DeviceName[100];			// Device Name and Description
-   unsigned short DeviceType;					// Device Type: ONCHIP, EXT8BIT, EXT16BIT, ...
+   char       	  DeviceName[100];		// Device Name and Description
+   unsigned short DeviceType;				// Device Type: ONCHIP, EXT8BIT, EXT16BIT, ...
    unsigned long  DeviceStartAddress;		// Default Device Start Address
-   unsigned long  DeviceSize;					// Total Size of Device
+   unsigned long  DeviceSize;				// Total Size of Device
    unsigned long  PageSize;					// Programming Page Size
-   unsigned char  EraseValue;					// Content of Erased Memory
+   unsigned char  EraseValue;				// Content of Erased Memory
    struct 	  DeviceSectors	 sectors[SECTOR_NUM];
 };
 

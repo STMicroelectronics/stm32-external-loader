@@ -68,7 +68,7 @@
 #define AUTO_POLLING_INTERVAL 16 // TODO: find out optimal polling interval
 
 static uint8_t QSPI_WriteEnable(void);
-static uint8_t QSPI_AutoPollingMemReady(void);
+static uint8_t QSPI_AutoPollingMemReady(uint32_t timeoutMs);
 static uint8_t QSPI_Configuration(void);
 static uint8_t QSPI_ResetChip(void);
 static uint8_t QSPI_ReadChipId(void);
@@ -354,7 +354,7 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 uint8_t CSP_QUADSPI_Init(void) {
 	HAL_StatusTypeDef res = HAL_OK;
 
-//	memset(&DualQuadState, 0, sizeof(DualQuadState));
+	memset(&DualQuadState, 0, sizeof(DualQuadState));
 
 	//prepare QSPI peripheral for ST-Link Utility operations
 //	res = HAL_OSPI_DeInit(&hospi1);
@@ -417,15 +417,12 @@ uint8_t CSP_QUADSPI_Init(void) {
 //			HAL_Delay(10);
 //			res = QSPI_ReadChipId();
 //		}
-
-
 	}
-
 
 
 	if (res == HAL_OK)
 	{
-		res = QSPI_AutoPollingMemReady();
+		res = QSPI_AutoPollingMemReady(HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 	}
 
 	if (res == HAL_OK)
@@ -434,18 +431,21 @@ uint8_t CSP_QUADSPI_Init(void) {
 	}
 
 
-	if (res != HAL_OK)
-	{
-		DualQuadState.latestError.errorCode = hospi1.ErrorCode;
-	}
-
-
 	return res;
 }
 
 uint8_t CSP_QSPI_Erase_Chip(void)
 {
-	return QSPI_Command(CHIP_ERASE_CMD, false, 0, NULL, NULL, 0);
+	HAL_StatusTypeDef res = HAL_OK;
+
+	res = QSPI_WriteEnable();
+
+	if (res == HAL_OK)
+	{
+		res = QSPI_Command(CHIP_ERASE_CMD, false, 0, NULL, NULL, 0);
+	}
+
+	return res;
 }
 
 uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
@@ -591,7 +591,7 @@ static uint8_t QSPI_AutoPollingSetup(void)
 	return res;
 }
 
-static uint8_t QSPI_AutoPollingMemReady(void)
+static uint8_t QSPI_AutoPollingMemReady(uint32_t timeoutMs)
 {
 	OSPI_AutoPollingTypeDef sConfig = {};
 	HAL_StatusTypeDef res = HAL_OK;
@@ -608,7 +608,7 @@ static uint8_t QSPI_AutoPollingMemReady(void)
 		sConfig.AutomaticStop = HAL_OSPI_AUTOMATIC_STOP_ENABLE;
 		sConfig.Interval = AUTO_POLLING_INTERVAL;
 
-		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig,	HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
+		res = HAL_OSPI_AutoPolling(&hospi1, &sConfig, timeoutMs);
 	}
 
 	return res;
@@ -892,6 +892,7 @@ static uint8_t QSPI_Command(uint8_t command,
 {
 	OSPI_RegularCmdTypeDef sCommand = {0};
 	HAL_StatusTypeDef res = HAL_OK;
+	uint32_t autoPollingTimeoutMs;
 
 	if (dataLength > 0)
 	{
@@ -941,7 +942,7 @@ static uint8_t QSPI_Command(uint8_t command,
 					}
 
 					//Configure automatic polling mode to wait for end of program or write
-					res = QSPI_AutoPollingMemReady();
+					res = QSPI_AutoPollingMemReady(HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
 				}
 			}
 			else // writeData!= NULL
@@ -951,12 +952,33 @@ static uint8_t QSPI_Command(uint8_t command,
 		}
 		else
 		{
-			if (command == SECTOR_ERASE_CMD)
+			if ((command == SECTOR_ERASE_CMD) ||
+				(command == CHIP_ERASE_CMD))
 			{
-				res = QSPI_AutoPollingMemReady();
+				if (command == SECTOR_ERASE_CMD)
+				{
+					autoPollingTimeoutMs = HAL_OSPI_TIMEOUT_DEFAULT_VALUE;
+				}
+				else
+				{
+					autoPollingTimeoutMs = (114+1)*1000; // 128Mb die erase time max 114s
+				}
+
+				res = QSPI_AutoPollingMemReady(autoPollingTimeoutMs);
 			}
 		}
 	}
+
+	if (res != HAL_OK)
+	{
+		DualQuadState.latestError.errorCode = hospi1.ErrorCode;
+
+		if (DualQuadState.latestError.timeout)
+		{
+			res = HAL_TIMEOUT;
+		}
+	}
+
 
 	return res;
 }

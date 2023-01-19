@@ -40,7 +40,8 @@ int Init(void)
 	volatile unsigned long DeviceSize;
 
 	if (useUnused)
-	{	DeviceSize = StorageInfo.DeviceSize;
+	{
+		DeviceSize = StorageInfo.DeviceSize;
 		UNUSED(DeviceSize);
 		SectorErase(0, 0);
 		MassErase();
@@ -50,6 +51,7 @@ int Init(void)
 	}
 
 	__disable_irq();
+	HAL_DeInit();
 	*(uint32_t*)0xE000EDF0 = 0xA05F0000; //enable interrupts in debug
 	SystemInit();
 	SCB->VTOR = 0x24000000 | 0x200;
@@ -82,10 +84,16 @@ int Init(void)
 	}
 
 #ifdef DEBUG
+//	if (loaderRes == LOADER_OK )
+//	{
+//		loaderRes = SectorErase(0,MEMORY_DUAL_SECTOR_SIZE*4-1);
+//	}
+
 	if (loaderRes == LOADER_OK )
 	{
-		loaderRes = SectorErase(0,MEMORY_DUAL_SECTOR_SIZE*4-1);
+		loaderRes = MassErase();
 	}
+
 
 
 	if (loaderRes == LOADER_OK )
@@ -113,42 +121,33 @@ int Write(uint32_t Address, uint32_t Size, const uint8_t* buffer)
 {
 	HAL_StatusTypeDef res = HAL_OK;
 
-//	setDebugString("Write()");
 	HAL_ResumeTick();
 
+	//doesn't work?:
+	res = HAL_OSPI_Abort(&hospi1);
 
-	//doesn't work:
-//	res = HAL_OSPI_Abort(&hospi1);
+	if (res != HAL_OK )
+	{
+		 setDebugString("HAL_OSPI_Abort() LOADER_FAIL");
+	}
 
-//	//does work sometimes, but too long:
-//	HAL_OSPI_DeInit(&hospi1);
-//	MX_OCTOSPI1_Init();
-
-	//does work, but too long:
-	res = CSP_QUADSPI_Init();
-
-//	HAL_Delay(1);
-
-//	setDebugString("CSP_QSPI_WriteMemory()");
 	res = CSP_QSPI_WriteMemory((uint8_t*) buffer, Address, Size);
-
-//	HAL_Delay(1);
 
 	if (res == HAL_OK )
 	{
 		res = CSP_QSPI_EnableMemoryMappedMode();
-	}
 
-    HAL_SuspendTick();
-
-	if (res != HAL_OK )
-	{
-//		setDebugString("Write() LOADER_OK");
+		if (res != HAL_OK )
+		{
+			 setDebugString("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
+		}
 	}
 	else
 	{
-//		setDebugString("Write() LOADER_FAIL");
+		setDebugString("CSP_QSPI_WriteMemory() LOADER_FAIL");
 	}
+
+    HAL_SuspendTick();
 
 	return res == HAL_OK ? LOADER_OK : LOADER_FAIL;
 }
@@ -164,10 +163,6 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 {
 	HAL_StatusTypeDef res = HAL_OK;
 
-//	return LOADER_OK;
-
-//	setDebugString("SectorErase()");
-
 	HAL_ResumeTick();
 
 	//doesn't work?:
@@ -178,33 +173,7 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 		 setDebugString("HAL_OSPI_Abort() LOADER_FAIL");
 	}
 
-//	//does work sometimes, but too long:
-//	HAL_OSPI_DeInit(&hospi1);
-//	MX_OCTOSPI1_Init();
-
-	//does work, but too long:
-//	res = CSP_QUADSPI_Init();
-//	if (res != HAL_OK )
-//	{
-//		 setDebugString("CSP_QUADSPI_Init() LOADER_FAIL");
-//	}
-
-//	uint32_t stateCopy = hospi1.State;
-//    MODIFY_REG(hospi1.Instance->CR, (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE), 0);
-//    hospi1.State = HAL_OSPI_STATE_READY;
-
-//    res = HAL_OSPI_Abort(&hospi1);
-
-
-//	HAL_Delay(1);
-
-//	setDebugString("CSP_QSPI_EraseSector()");
 	res = CSP_QSPI_EraseSector(EraseStartAddress, EraseEndAddress);
-
-//    MODIFY_REG(hospi1.Instance->CR, (OCTOSPI_CR_TCEN | OCTOSPI_CR_FMODE), (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE));
-//    hospi1.State = stateCopy;
-
-//	HAL_Delay(1);
 
 	if (res == HAL_OK )
 	{
@@ -239,25 +208,31 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 int MassErase(void)
 {
 	HAL_StatusTypeDef res = HAL_OK;
+
 	HAL_ResumeTick();
 
+	//doesn't work?:
+	res = HAL_OSPI_Abort(&hospi1);
 
-	//doesn't work:
-//	res = HAL_OSPI_Abort(&hospi1);
-
-//	//does work sometimes, but too long:
-//	HAL_OSPI_DeInit(&hospi1);
-//	MX_OCTOSPI1_Init();
-
-	//does work, but too long:
-	res = CSP_QUADSPI_Init();
-
+	if (res != HAL_OK )
+	{
+		 setDebugString("HAL_OSPI_Abort() LOADER_FAIL");
+	}
 
 	res = CSP_QSPI_Erase_Chip();
 
 	if (res == HAL_OK )
 	{
 		res = CSP_QSPI_EnableMemoryMappedMode();
+
+		if (res != HAL_OK )
+		{
+			 setDebugString("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
+		}
+	}
+	else
+	{
+		setDebugString("CSP_QSPI_Erase_Chip() LOADER_FAIL");
 	}
 
     HAL_SuspendTick();

@@ -2,116 +2,27 @@
 #include "octospi.h"
 #include "main.h"
 #include "gpio.h"
+#include "Dev_Inf.h"
 #include <stdbool.h>
 
-#define LOADER_OK	0x1
-#define LOADER_FAIL	0x0
 
 void SystemClock_Config(void);
 
-//char* ptr = 0x20000000;
-void setDebugReg(const char* message)
+//#define USE_DEBUG_STRING
+
+#ifdef USE_DEBUG_STRING
+void setDebugString(const char* message)
 {
 	char* ptr = 0x20000000;
 	strcpy(ptr, message);
-//	ptr += strlen(message)+1;
 }
+#else
+#define setDebugString(message)
+#endif
 
-//static bool initialized;
-
-int InitBody()
-{
-	HAL_StatusTypeDef halRes = HAL_OK;
-	int loaderRes = LOADER_OK;
-
-//	if (initialized)
-//	{
-//		return LOADER_OK;
-//	}
-
-	__disable_irq();
-
-//	//completely reset peripheral:
-//	__HAL_RCC_OSPI1_FORCE_RESET();
-//	__HAL_RCC_OSPI1_RELEASE_RESET();
-//
-//	halRes = HAL_OSPI_DeInit(&hospi1);
-//	halRes = HAL_DeInit();
-
-//	halRes = CSP_QUADSPI_Init();
-
-//	setDebugReg("Enable interrupts");
-	*(uint32_t*)0xE000EDF0 = 0xA05F0000; //enable interrupts in debug
-
-//	setDebugReg("SystemInit()");
-	SystemInit();
-	SCB->VTOR = 0x24000000 | 0x200;
-	//SCB_EnableICache(); // enabling cache fails
-
-	halRes = HAL_Init();
-    SystemClock_Config();
-    MX_GPIO_Init();
-    MX_OCTOSPI1_Init();
-
-//	__enable_irq();
-
-////    //completely reset peripheral:
-//    __HAL_RCC_OSPI1_FORCE_RESET();
-//    __HAL_RCC_OSPI1_RELEASE_RESET();
-
-    __enable_irq();
-//    setDebugReg("CSP_QUADSPI_Init()");
-    halRes = CSP_QUADSPI_Init();
-    loaderRes = halRes == HAL_OK ? LOADER_OK : LOADER_FAIL;
-
-	if (loaderRes != LOADER_OK )
-	{
-		setDebugReg("CSP_QUADSPI_Init() LOADER_FAIL");
-	}
-
-	if (loaderRes == LOADER_OK )
-	{
-//	    setDebugReg("CSP_QSPI_EnableMemoryMappedMode()");
-		halRes = CSP_QSPI_EnableMemoryMappedMode();
-		loaderRes = halRes == HAL_OK ? LOADER_OK : LOADER_FAIL;
-
-		if (loaderRes != LOADER_OK )
-		{
-			setDebugReg("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
-		}
-
-	}
-
-//	if (loaderRes == LOADER_OK )
-//	{
-//		loaderRes = SectorErase(0,MEMORY_DUAL_SECTOR_SIZE*4-1);
-//	}
-//
-//
-//	if (loaderRes == LOADER_OK )
-//	{
-//		loaderRes = Write(0 << 13, 15, (const uint8_t *)"Hello sector 0");
-//		loaderRes = Write(1 << 13, 15, (const uint8_t *)"Hello sector 1");
-//		loaderRes = Write(2 << 13, 15, (const uint8_t *)"Hello sector 2");
-//		loaderRes = Write(3 << 13, 15, (const uint8_t *)"Hello sector 3");
-//	}
-
-//	if (loaderRes == LOADER_OK )
-//	{
-//		setDebugReg("Init() LOADER_OK");
-//	}
-//	else
-//	{
-//		setDebugReg("Init() LOADER_FAIL");
-//	}
-
-//	if (loaderRes == LOADER_OK )
-//	{
-//		initialized = true;
-//	}
-
-	return loaderRes;
-}
+#ifndef UNUSED
+#define UNUSED(x) (void)(x)
+#endif
 
 /**
  * @brief  System initialization.
@@ -121,22 +32,74 @@ int InitBody()
  */
 int Init(void)
 {
+	HAL_StatusTypeDef halRes = HAL_OK;
 	int loaderRes = LOADER_OK;
-	
-	loaderRes = InitBody();
 
-//	if (loaderRes == LOADER_OK )
-//	{
-//		loaderRes = InitBody();
-//	}
+	//trick compiler not to discard unused functions and data with option (-Wl,--gc-sections)
+	volatile bool useUnused = false;
+	volatile unsigned long DeviceSize;
 
-//	if (loaderRes == LOADER_OK )
-//	{
-//		loaderRes = InitBody();
-//	}
+	if (useUnused)
+	{	DeviceSize = StorageInfo.DeviceSize;
+		UNUSED(DeviceSize);
+		SectorErase(0, 0);
+		MassErase();
+		Write(0,0,NULL);
+		CheckSum(0, 0, 0);
+		Verify(0,0,0,0);
+	}
+
+	__disable_irq();
+	*(uint32_t*)0xE000EDF0 = 0xA05F0000; //enable interrupts in debug
+	SystemInit();
+	SCB->VTOR = 0x24000000 | 0x200;
+	//SCB_EnableICache(); // enabling cache fails
+	halRes = HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_OCTOSPI1_Init();
+    __enable_irq();
+
+
+    halRes = CSP_QUADSPI_Init();
+    loaderRes = halRes == HAL_OK ? LOADER_OK : LOADER_FAIL;
+
+	if (loaderRes != LOADER_OK )
+	{
+		setDebugString("CSP_QUADSPI_Init() LOADER_FAIL");
+	}
+
+	if (loaderRes == LOADER_OK )
+	{
+		halRes = CSP_QSPI_EnableMemoryMappedMode();
+		loaderRes = halRes == HAL_OK ? LOADER_OK : LOADER_FAIL;
+
+		if (loaderRes != LOADER_OK )
+		{
+			setDebugString("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
+		}
+
+	}
+
+#ifdef DEBUG
+	if (loaderRes == LOADER_OK )
+	{
+		loaderRes = SectorErase(0,MEMORY_DUAL_SECTOR_SIZE*4-1);
+	}
+
+
+	if (loaderRes == LOADER_OK )
+	{
+		loaderRes = Write(0 << 13, 15, (const uint8_t *)"Hello sector 0");
+		loaderRes = Write(1 << 13, 15, (const uint8_t *)"Hello sector 1");
+		loaderRes = Write(2 << 13, 15, (const uint8_t *)"Hello sector 2");
+		loaderRes = Write(3 << 13, 15, (const uint8_t *)"Hello sector 3");
+	}
+#endif
 
 	return loaderRes;
 }
+
 
 /**
  * @brief   Program memory.
@@ -150,7 +113,7 @@ int Write(uint32_t Address, uint32_t Size, const uint8_t* buffer)
 {
 	HAL_StatusTypeDef res = HAL_OK;
 
-//	setDebugReg("Write()");
+//	setDebugString("Write()");
 	HAL_ResumeTick();
 
 
@@ -166,7 +129,7 @@ int Write(uint32_t Address, uint32_t Size, const uint8_t* buffer)
 
 //	HAL_Delay(1);
 
-//	setDebugReg("CSP_QSPI_WriteMemory()");
+//	setDebugString("CSP_QSPI_WriteMemory()");
 	res = CSP_QSPI_WriteMemory((uint8_t*) buffer, Address, Size);
 
 //	HAL_Delay(1);
@@ -180,11 +143,11 @@ int Write(uint32_t Address, uint32_t Size, const uint8_t* buffer)
 
 	if (res != HAL_OK )
 	{
-//		setDebugReg("Write() LOADER_OK");
+//		setDebugString("Write() LOADER_OK");
 	}
 	else
 	{
-//		setDebugReg("Write() LOADER_FAIL");
+//		setDebugString("Write() LOADER_FAIL");
 	}
 
 	return res == HAL_OK ? LOADER_OK : LOADER_FAIL;
@@ -203,24 +166,28 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 
 //	return LOADER_OK;
 
-//	setDebugReg("SectorErase()");
+//	setDebugString("SectorErase()");
 
 	HAL_ResumeTick();
 
-	//doesn't work:
-//	res = HAL_OSPI_Abort(&hospi1);
+	//doesn't work?:
+	res = HAL_OSPI_Abort(&hospi1);
+
+	if (res != HAL_OK )
+	{
+		 setDebugString("HAL_OSPI_Abort() LOADER_FAIL");
+	}
 
 //	//does work sometimes, but too long:
 //	HAL_OSPI_DeInit(&hospi1);
 //	MX_OCTOSPI1_Init();
 
 	//does work, but too long:
-	res = CSP_QUADSPI_Init();
-
-	if (res != HAL_OK )
-	{
-		 setDebugReg("CSP_QUADSPI_Init() LOADER_FAIL");
-	}
+//	res = CSP_QUADSPI_Init();
+//	if (res != HAL_OK )
+//	{
+//		 setDebugString("CSP_QUADSPI_Init() LOADER_FAIL");
+//	}
 
 //	uint32_t stateCopy = hospi1.State;
 //    MODIFY_REG(hospi1.Instance->CR, (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE), 0);
@@ -231,7 +198,7 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 
 //	HAL_Delay(1);
 
-//	setDebugReg("CSP_QSPI_EraseSector()");
+//	setDebugString("CSP_QSPI_EraseSector()");
 	res = CSP_QSPI_EraseSector(EraseStartAddress, EraseEndAddress);
 
 //    MODIFY_REG(hospi1.Instance->CR, (OCTOSPI_CR_TCEN | OCTOSPI_CR_FMODE), (HAL_OSPI_TIMEOUT_COUNTER_DISABLE | OCTOSPI_CR_FMODE));
@@ -245,12 +212,12 @@ int SectorErase(uint32_t EraseStartAddress, uint32_t EraseEndAddress)
 
 		if (res != HAL_OK )
 		{
-			 setDebugReg("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
+			 setDebugString("CSP_QSPI_EnableMemoryMappedMode() LOADER_FAIL");
 		}
 	}
 	else
 	{
-		setDebugReg("SectorErase() LOADER_FAIL");
+		setDebugString("SectorErase() LOADER_FAIL");
 	}
 
     HAL_SuspendTick();

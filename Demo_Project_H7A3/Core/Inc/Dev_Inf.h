@@ -32,6 +32,7 @@ struct StorageInfo
    struct 	  DeviceSectors	 sectors[SECTOR_NUM];
 };
 
+extern struct StorageInfo const StorageInfo;
 
 
 #endif /* DEV_INF_H_ */

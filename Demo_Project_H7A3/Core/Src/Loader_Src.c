@@ -35,7 +35,7 @@ int Init(void)
 	HAL_StatusTypeDef halRes = HAL_OK;
 	int loaderRes = LOADER_OK;
 
-	//trick compiler not to discard unused functions and data with option (-Wl,--gc-sections)
+	//trick compiler not to discard unused functions and data with option Discard unused sections (-Wl,--gc-sections)
 	volatile bool useUnused = false;
 	volatile unsigned long DeviceSize;
 

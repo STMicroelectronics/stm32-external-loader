@@ -303,7 +303,8 @@ void HAL_OSPI_MspInit(OSPI_HandleTypeDef* ospiHandle)
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /* USER CODE BEGIN OCTOSPI1_MspInit 1 */
-
+    __HAL_RCC_OSPI1_FORCE_RESET();
+    __HAL_RCC_OSPI1_RELEASE_RESET();
   /* USER CODE END OCTOSPI1_MspInit 1 */
   }
 }
@@ -352,12 +353,29 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 
 uint8_t CSP_QUADSPI_Init(void) {
 	HAL_StatusTypeDef res = HAL_OK;
-	volatile OspiErrorCodeType errorCode = {0};
+
+//	memset(&DualQuadState, 0, sizeof(DualQuadState));
 
 	//prepare QSPI peripheral for ST-Link Utility operations
-	res = HAL_OSPI_DeInit(&hospi1);
+//	res = HAL_OSPI_DeInit(&hospi1);
 
+//	MX_OCTOSPI1_Init();
+
+
+//	if (hospi1.State != HAL_OSPI_STATE_READY)
+//	{
+//		res = HAL_OSPI_Abort(&hospi1);
+//		memset(&DualQuadState, 0, sizeof(DualQuadState));
+////		//prepare QSPI peripheral for ST-Link Utility operations
+////		res = HAL_OSPI_DeInit(&hospi1);
+////		MX_OCTOSPI1_Init();
+//	}
+
+	HAL_OSPI_DeInit(&hospi1);
 	MX_OCTOSPI1_Init();
+
+
+	HAL_Delay(1);
 
 	if (res == HAL_OK)
 	{
@@ -369,7 +387,35 @@ uint8_t CSP_QUADSPI_Init(void) {
 	if (res == HAL_OK)
 	{
 		res = QSPI_ReadChipId();
+		if (res != HAL_OK)
+		{
+			DualQuadState.quadProtocolEnabled = true;
+			res = QSPI_ResetChip();
+			res = QSPI_ReadChipId();
+		}
+//		if (res != HAL_OK)
+//		{
+//
+//			HAL_Delay(10);
+//			res = QSPI_ResetChip();
+//			HAL_Delay(10);
+//			res = QSPI_ReadChipId();
+//		}
+//
+//		if (res != HAL_OK)
+//		{
+//			HAL_OSPI_DeInit(&hospi1);
+//			MX_OCTOSPI1_Init();
+//			HAL_Delay(10);
+//			res = QSPI_ResetChip();
+//			HAL_Delay(10);
+//			res = QSPI_ReadChipId();
+//		}
+
+
 	}
+
+
 
 	if (res == HAL_OK)
 	{
@@ -384,10 +430,9 @@ uint8_t CSP_QUADSPI_Init(void) {
 
 	if (res != HAL_OK)
 	{
-		errorCode.errorCode = hospi1.ErrorCode;
+		DualQuadState.latestError.errorCode = hospi1.ErrorCode;
 	}
 
-	(void)errorCode;
 
 	return res;
 }

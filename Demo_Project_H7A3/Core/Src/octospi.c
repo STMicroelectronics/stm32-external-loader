@@ -375,24 +375,30 @@ uint8_t CSP_QUADSPI_Init(void) {
 	MX_OCTOSPI1_Init();
 
 
-	HAL_Delay(1);
+//	HAL_Delay(1);
+
+	if (res == HAL_OK)
+	{
+		DualQuadState.quadProtocolEnabled = true;
+		res = QSPI_ResetChip();
+	}
 
 	if (res == HAL_OK)
 	{
 		res = QSPI_ResetChip();
 	}
 
-	HAL_Delay(1); // TODO: use correct delay value from datasheet
+//	HAL_Delay(1); // TODO: use correct delay value from datasheet
 
 	if (res == HAL_OK)
 	{
 		res = QSPI_ReadChipId();
-		if (res != HAL_OK)
-		{
-			DualQuadState.quadProtocolEnabled = true;
-			res = QSPI_ResetChip();
-			res = QSPI_ReadChipId();
-		}
+//		if (res != HAL_OK)
+//		{
+//			DualQuadState.quadProtocolEnabled = true;
+//			res = QSPI_ResetChip();
+//			res = QSPI_ReadChipId();
+//		}
 //		if (res != HAL_OK)
 //		{
 //

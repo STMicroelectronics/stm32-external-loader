@@ -251,7 +251,8 @@ int MassErase(void)
  *     R0             : Checksum value
  * Note: Optional for all types of device
  */
-uint32_t CheckSum(uint32_t StartAddress, uint32_t Size, uint32_t InitVal) {
+uint32_t CheckSum(uint32_t StartAddress, uint32_t Size, uint32_t InitVal)
+{
 	uint8_t missalignementAddress = StartAddress % 4;
 	uint8_t missalignementSize = Size;
 	int cnt;
@@ -307,7 +308,7 @@ uint32_t CheckSum(uint32_t StartAddress, uint32_t Size, uint32_t InitVal) {
 		StartAddress += 4;
 	}
 
-	return (InitVal);
+	return InitVal;
 }
 
 /**
@@ -324,9 +325,10 @@ uint32_t CheckSum(uint32_t StartAddress, uint32_t Size, uint32_t InitVal) {
  *     R1             : Checksum value
  * Note: Optional for all types of device
  */
-uint64_t Verify(uint32_t MemoryAddr, uint32_t RAMBufferAddr, uint32_t Size,uint32_t missalignement){
-
+uint64_t Verify(uint32_t MemoryAddr, uint32_t RAMBufferAddr, uint32_t Size, uint32_t missalignement)
+{
 	HAL_ResumeTick();
+
 	uint32_t VerifiedData = 0, InitVal = 0;
 	uint64_t checksum;
 	Size *= 4;
@@ -349,5 +351,5 @@ uint64_t Verify(uint32_t MemoryAddr, uint32_t RAMBufferAddr, uint32_t Size,uint3
 	}
 
 	HAL_SuspendTick();
-	return (checksum << 32);
+	return checksum << 32;
 }

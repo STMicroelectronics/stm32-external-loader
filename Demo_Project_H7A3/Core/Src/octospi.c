@@ -63,9 +63,20 @@
 #define MT25TL256_MAX_CLK MT25TL256_MAX_CLK_STR
 #endif
 
-#define FAST_READ_DUMMY_CYCLES 11 // (11 is needed in STR and 9 in DTR, less needed in case of lower clocks)
+#define FAST_READ_DUMMY_CYCLES_MASK (((1<<4)-1)<<4)
+#define FAST_READ_DUMMY_CYCLES 11 	// (11 is needed in STR and 9 in DTR, less needed in case of lower clocks)
+#define AUTO_POLLING_INTERVAL 16 	// value from example
+#define CHIP_ERASE_TIMEOUT_MS ((114+1)*1000)	// 128Mb die erase time max 114s (BULK ERASE)
 
-#define AUTO_POLLING_INTERVAL 16 // TODO: find out optimal polling interval
+// these commands are the only ones with 4 byte address:
+#define READ_NONVOLATILE_LOCK_BITS_CMD 0xE2
+#define	WRITE_NONVOLATILE_LOCK_BITS_CMD 0xE3
+
+
+#define EMPTY() // force multiple passes for macro expansion(http://jhnet.co.uk/articles/cpp_magic)
+#define HAL_OSPI_Init(x) HAL_OSPI_InitOveruled(x)
+#define HAL_OSPI_Init_Original(x) HAL_OSPI_Init EMPTY() (x)
+
 
 static uint8_t QSPI_WriteEnable(void);
 static uint8_t QSPI_AutoPollingMemReady(uint32_t timeoutMs);
@@ -88,6 +99,8 @@ static uint8_t QSPI_Command(uint8_t command,
 							const uint8_t* writeData,
 							uint8_t* readData,
 							size_t dataLength);
+
+static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospiPtr);
 
 
 typedef union
@@ -124,35 +137,7 @@ typedef struct
 DualQuadStateType;
 
 
-
 static DualQuadStateType DualQuadState;
-
-
-static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospiPtr)
-{
-	hospiPtr->Init.ClockPrescaler = (SystemCoreClock+MT25TL256_MAX_CLK-1) / MT25TL256_MAX_CLK;
-
-#if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
-//	hospiPtr->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED; // doesn't work
-	hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_ENABLE;
-#else
-	hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
-#endif
-
-
-	if (hospi1.Init.DelayHoldQuarterCycle == HAL_OSPI_DHQC_ENABLE)
-	{
-		// delay quarter cycle requires at least 4 cycles
-		if (hospiPtr->Init.ClockPrescaler < 4)
-		{
-			hospiPtr->Init.ClockPrescaler = 4;
-		}
-	}
-
-	return HAL_OSPI_Init(hospiPtr);
-}
-
-#define HAL_OSPI_Init HAL_OSPI_InitOveruled
 
 /* USER CODE END 0 */
 
@@ -303,6 +288,7 @@ void HAL_OSPI_MspInit(OSPI_HandleTypeDef* ospiHandle)
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /* USER CODE BEGIN OCTOSPI1_MspInit 1 */
+    // this is needed or else communication may fail
     __HAL_RCC_OSPI1_FORCE_RESET();
     __HAL_RCC_OSPI1_RELEASE_RESET();
   /* USER CODE END OCTOSPI1_MspInit 1 */
@@ -351,31 +337,37 @@ void HAL_OSPI_MspDeInit(OSPI_HandleTypeDef* ospiHandle)
 
 /* USER CODE BEGIN 1 */
 
+static HAL_StatusTypeDef HAL_OSPI_InitOveruled(OSPI_HandleTypeDef *hospiPtr)
+{
+	hospiPtr->Init.ClockPrescaler = (SystemCoreClock+MT25TL256_MAX_CLK-1) / MT25TL256_MAX_CLK;
+
+#if defined(USE_COMMAND_DTR) || defined(USE_READ_DTR)
+//	hospiPtr->Init.DelayBlockBypass = HAL_OSPI_DELAY_BLOCK_USED; // doesn't work
+	hospi1.Init.DelayHoldQuarterCycle = HAL_OSPI_DHQC_ENABLE;
+#else
+	hospi1.Init.SampleShifting = HAL_OSPI_SAMPLE_SHIFTING_HALFCYCLE;
+#endif
+
+
+	if (hospi1.Init.DelayHoldQuarterCycle == HAL_OSPI_DHQC_ENABLE)
+	{
+		// delay quarter cycle requires at least 4 cycles
+		if (hospiPtr->Init.ClockPrescaler < 4)
+		{
+			hospiPtr->Init.ClockPrescaler = 4;
+		}
+	}
+
+	return HAL_OSPI_Init_Original(hospiPtr);
+}
+
 uint8_t CSP_QUADSPI_Init(void) {
 	HAL_StatusTypeDef res = HAL_OK;
 
 	memset(&DualQuadState, 0, sizeof(DualQuadState));
 
-	//prepare QSPI peripheral for ST-Link Utility operations
-//	res = HAL_OSPI_DeInit(&hospi1);
-
-//	MX_OCTOSPI1_Init();
-
-
-//	if (hospi1.State != HAL_OSPI_STATE_READY)
-//	{
-//		res = HAL_OSPI_Abort(&hospi1);
-//		memset(&DualQuadState, 0, sizeof(DualQuadState));
-////		//prepare QSPI peripheral for ST-Link Utility operations
-////		res = HAL_OSPI_DeInit(&hospi1);
-////		MX_OCTOSPI1_Init();
-//	}
-
 	HAL_OSPI_DeInit(&hospi1);
 	MX_OCTOSPI1_Init();
-
-
-//	HAL_Delay(1);
 
 	if (res == HAL_OK)
 	{
@@ -393,30 +385,6 @@ uint8_t CSP_QUADSPI_Init(void) {
 	if (res == HAL_OK)
 	{
 		res = QSPI_ReadChipId();
-//		if (res != HAL_OK)
-//		{
-//			DualQuadState.quadProtocolEnabled = true;
-//			res = QSPI_ResetChip();
-//			res = QSPI_ReadChipId();
-//		}
-//		if (res != HAL_OK)
-//		{
-//
-//			HAL_Delay(10);
-//			res = QSPI_ResetChip();
-//			HAL_Delay(10);
-//			res = QSPI_ReadChipId();
-//		}
-//
-//		if (res != HAL_OK)
-//		{
-//			HAL_OSPI_DeInit(&hospi1);
-//			MX_OCTOSPI1_Init();
-//			HAL_Delay(10);
-//			res = QSPI_ResetChip();
-//			HAL_Delay(10);
-//			res = QSPI_ReadChipId();
-//		}
 	}
 
 
@@ -453,9 +421,6 @@ uint8_t CSP_QSPI_EraseSector(uint32_t EraseStartAddress, uint32_t EraseEndAddres
 	HAL_StatusTypeDef res = HAL_OK;
 
 	EraseStartAddress &= ~(MEMORY_DUAL_SECTOR_SIZE - 1); // mask lower bits of address, only an entire sector can be erased
-
-	/* Erasing Sequence -------------------------------------------------- */
-
 
 	while (EraseEndAddress >= EraseStartAddress)
 	{
@@ -502,12 +467,9 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 	bytesRemainingInPage = MEMORY_DUAL_PAGE_SIZE - (current_addr % MEMORY_DUAL_PAGE_SIZE);
 	current_size = (buffer_size > bytesRemainingInPage) ? bytesRemainingInPage : buffer_size;
 
-	/* Initialize the address variables */
-
-
-	/* Perform the write page by page */
-	do {
-		/* Enable write operations */
+	// Perform the write page by page
+	do
+	{
 		res = QSPI_WriteEnable();
 		if (res != HAL_OK)
 		{
@@ -521,14 +483,14 @@ uint8_t CSP_QSPI_WriteMemory(const uint8_t* buffer, uint32_t address, uint32_t b
 		}
 
 
-		/* Update the address and size variables for next page programming */
+		// Update the address and size variables for next page programming
 		buffer_size -= current_size;
 		current_addr += current_size;
 		buffer += current_size;
 
 		current_size = (buffer_size > MEMORY_DUAL_PAGE_SIZE) ? MEMORY_DUAL_PAGE_SIZE : buffer_size;
-
-	} while (current_size);
+	}
+	while (current_size);
 
 	return res;
 }
@@ -552,10 +514,10 @@ uint8_t CSP_QSPI_EnableMemoryMappedMode(void)
 		Error_Handler();
 	}
 
-//	/* Initialize memory-mapped mode for write operations */
+	// Initialize memory-mapped mode for write operations
 	sCommand.OperationType = HAL_OSPI_OPTYPE_WRITE_CFG;
-	sCommand.Instruction = 0;// TODO: check if this is the correct way to disable memory-mapped write
-	sCommand.DummyCycles = 0; // ?
+	sCommand.Instruction = 0;// TODO: check if this is the correct way to disable memory-mapped write?
+	sCommand.DummyCycles = 0;//write has no dummy cycles
 	sCommand.DQSMode = HAL_OSPI_DQS_ENABLE; // why strobing enabled?
 
 	res = HAL_OSPI_Command(&hospi1, &sCommand, HAL_OSPI_TIMEOUT_DEFAULT_VALUE);
@@ -595,8 +557,6 @@ static uint8_t QSPI_AutoPollingMemReady(uint32_t timeoutMs)
 {
 	OSPI_AutoPollingTypeDef sConfig = {};
 	HAL_StatusTypeDef res = HAL_OK;
-
-	// todo: "avoid the auto-poll operations"
 
 	res = QSPI_AutoPollingSetup();
 
@@ -651,7 +611,6 @@ static uint8_t QSPI_Configuration(void)
 	HAL_StatusTypeDef res = HAL_OK;
 	uint8_t read_buffer[2] = { 0 };
 	uint8_t write_buffer[2] = { 0 };
-	/*read status register*/
 
 	// R-M-W dummy cycles:
 	res = QSPI_Command(READ_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, NULL, read_buffer, 2);
@@ -665,9 +624,9 @@ static uint8_t QSPI_Configuration(void)
 	{
 		memcpy(write_buffer,read_buffer,2);
 
-		write_buffer[0] &= ~(((1<<4)-1)<<4);
+		write_buffer[0] &= ~FAST_READ_DUMMY_CYCLES_MASK;
 		write_buffer[0] |= FAST_READ_DUMMY_CYCLES << 4;
-		write_buffer[1] &= ~(((1<<4)-1)<<4);
+		write_buffer[1] &= ~FAST_READ_DUMMY_CYCLES_MASK;
 		write_buffer[1] |= FAST_READ_DUMMY_CYCLES << 4;
 
 		res = QSPI_Command(WRITE_VOLATILE_CONFIGURATION_REGISTER_CMD, false, 0, write_buffer, NULL, 2);
@@ -802,22 +761,23 @@ static uint8_t QSPI_InitCommandStruct(	OSPI_RegularCmdTypeDef* sCommandPtr,
 	}
 
 
-	sCommandPtr->OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; // called by a function call
+	sCommandPtr->OperationType = HAL_OSPI_OPTYPE_COMMON_CFG; // called by a function call instead of by peripheral in memory mapped mode
 	sCommandPtr->FlashId = 0; //only applies if Dualquad is disabled
 
 	sCommandPtr->Instruction = command;
 	sCommandPtr->InstructionMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_INSTRUCTION_4_LINES : HAL_OSPI_INSTRUCTION_1_LINE;
 	sCommandPtr->InstructionSize = HAL_OSPI_INSTRUCTION_8_BITS;
 	sCommandPtr->InstructionDtrMode = DualQuadState.dtrProtocolEnabled ? HAL_OSPI_INSTRUCTION_DTR_ENABLE : HAL_OSPI_INSTRUCTION_DTR_DISABLE;
-//	sCommandPtr->InstructionDtrMode = HAL_OSPI_INSTRUCTION_DTR_DISABLE;
 
 	if (hasAddress)
 	{
 		sCommandPtr->AddressMode = DualQuadState.quadProtocolEnabled ? HAL_OSPI_ADDRESS_4_LINES : HAL_OSPI_ADDRESS_1_LINE;
 		sCommandPtr->Address = address; // peripheral will automatically convert this to correct address for each die
 
-		if ((command == 0xE2) || (command == 0xE3)) // these commands are the only ones with 4 byte address
+		if ((command == READ_NONVOLATILE_LOCK_BITS_CMD) ||
+			(command == WRITE_NONVOLATILE_LOCK_BITS_CMD))
 		{
+			// these commands are the only ones with 4 byte address
 			sCommandPtr->AddressSize = HAL_OSPI_ADDRESS_32_BITS;
 		}
 		else
@@ -961,7 +921,7 @@ static uint8_t QSPI_Command(uint8_t command,
 				}
 				else
 				{
-					autoPollingTimeoutMs = (114+1)*1000; // 128Mb die erase time max 114s
+					autoPollingTimeoutMs = CHIP_ERASE_TIMEOUT_MS;
 				}
 
 				res = QSPI_AutoPollingMemReady(autoPollingTimeoutMs);

@@ -57,8 +57,8 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 #ifdef TEST
-static uint8_t buffer_test[MEMORY_DUAL_SECTOR_SIZE];
-static uint8_t buffer_test_read[MEMORY_DUAL_SECTOR_SIZE];
+static uint8_t bufferTest[MEMORY_DUAL_SECTOR_SIZE];
+static uint8_t bufferTestRead[MEMORY_DUAL_SECTOR_SIZE];
 #define NUMBER_OF_SECTORS_TO_TEST 4
 #endif
 /* USER CODE END 0 */
@@ -117,7 +117,7 @@ int main(void)
 
   	for (sectorIndex = 0; sectorIndex < MEMORY_DUAL_SECTOR_SIZE; sectorIndex++)
   	{
-  		buffer_test[sectorIndex] = (sectorIndex+1) & 0xff;
+  		bufferTest[sectorIndex] = (sectorIndex+1) & 0xff;
   	}
 
 
@@ -129,8 +129,8 @@ int main(void)
   			while (1);  //breakpoint - error detected
   		}
 
-  		buffer_test[0] = sectorIndex+1;
-  		res = CSP_QSPI_WriteMemory(buffer_test, sectorIndex * MEMORY_DUAL_SECTOR_SIZE, sizeof(buffer_test));
+  		bufferTest[0] = sectorIndex+1;
+  		res = CSP_QSPI_WriteMemory(bufferTest, sectorIndex * MEMORY_DUAL_SECTOR_SIZE, sizeof(bufferTest));
   		if (res != HAL_OK)
 		{
   			while (1);  //breakpoint - error detected
@@ -138,7 +138,7 @@ int main(void)
   	}
 
   	address = 0;
-	res = CSP_QSPI_ReadMemory(buffer_test_read, address, sizeof(buffer_test_read));
+	res = CSP_QSPI_ReadMemory(bufferTestRead, address, sizeof(bufferTestRead));
 	if (res != HAL_OK)
 	{
 		while (1);  //breakpoint - error detected
@@ -152,13 +152,13 @@ int main(void)
 
   	for (sectorIndex = 0; sectorIndex < NUMBER_OF_SECTORS_TO_TEST; sectorIndex++)
   	{
-  		buffer_test[0] = sectorIndex+1;
+  		bufferTest[0] = sectorIndex+1;
   		address = MEMORY_MAPPED_START_ADDRESS + sectorIndex * MEMORY_DUAL_SECTOR_SIZE;
-  		if (memcmp(buffer_test,	(uint8_t*) (address), MEMORY_DUAL_SECTOR_SIZE) != 0)
+  		if (memcmp(bufferTest,	(uint8_t*) (address), MEMORY_DUAL_SECTOR_SIZE) != 0)
   		{
   			for(byteIndex = 0; byteIndex < MEMORY_DUAL_SECTOR_SIZE; ++byteIndex)
   			{
-  				if ( buffer_test[byteIndex] != ((uint8_t*)(address))[byteIndex])
+  				if ( bufferTest[byteIndex] != ((uint8_t*)(address))[byteIndex])
 				{
 					break;
   				}

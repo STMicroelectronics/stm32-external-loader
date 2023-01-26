@@ -4,6 +4,7 @@
 #include "gpio.h"
 #include "Dev_Inf.h"
 #include <stdbool.h>
+#include <string.h>
 
 
 void SystemClock_Config(void);
@@ -13,7 +14,7 @@ void SystemClock_Config(void);
 #ifdef USE_DEBUG_STRING
 void setDebugString(const char* message)
 {
-	char* ptr = 0x20000000;
+	char* ptr = (char*)0x20000000;
 	strcpy(ptr, message);
 }
 #else

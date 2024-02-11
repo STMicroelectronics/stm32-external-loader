@@ -14,7 +14,9 @@ CSP_QSPI_Init_t Flash = {CSP_QSPI_SPI_MODE, CSP_QSPI_3BYTES_SIZE};
 /* QUADSPI init function */
 uint8_t CSP_QUADSPI_Init(void) {
     //prepare QSPI peripheral for ST-Link Utility operations
-	hqspi1.Instance = QUADSPI;
+    /* If STM32CubeProgrammer fails with 'Init function fail with timeout'
+     * it may be necessary to change the Optimization level to Optimize for size (-Os).
+    */
     if (HAL_QSPI_DeInit(&hqspi1) != HAL_OK) {
         return HAL_ERROR;
     }

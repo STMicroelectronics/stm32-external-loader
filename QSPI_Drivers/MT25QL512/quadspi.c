@@ -210,8 +210,7 @@ QSPI_Configuration(void) {
 
 
     /*set dummy cycles*/
-    MODIFY_REG(reg, 0xF0F0, ((DUMMY_CLOCK_CYCLES_READ_QUAD << 4) |
-                             (DUMMY_CLOCK_CYCLES_READ_QUAD << 12)));
+    MODIFY_REG(reg, 0xF0F0, (DUMMY_CLOCK_CYCLES_READ_QUAD << 12));
 
 
     sCommand.Instruction = WRITE_VOL_CFG_REG_CMD;

@@ -1,0 +1,112 @@
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/STM32L4xx_HAL_Driver"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/STM32L4xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32l4xx_hal_driver.git
+	branch = master
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/CMSIS/Device/ST/STM32L4xx"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/CMSIS/Device/ST/STM32L4xx
+	url = https://github.com/STMicroelectronics/cmsis_device_l4.git
+	branch = master
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/STM32L496G-Discovery"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/STM32L496G-Discovery
+	url = https://github.com/STMicroelectronics/32l496gdiscovery.git
+	branch = main
+[submodule "STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/Components/mx25r6435f"]
+	path = STM32L4x_boards/MX25R6435F_STM32L496G-DISCO/Drivers/BSP/Components/mx25r6435f
+	url = https://github.com/STMicroelectronics/stm32-mx25r6435f.git
+	branch = main
+[submodule "STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/STML5xx_HAL_Driver"]
+	path = STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/STML5xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32l5xx_hal_driver.git
+	branch = master
+[submodule "STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/CMSIS/Device/ST/STM32L5xx"]
+	path = STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/CMSIS/Device/ST/STM32L5xx
+	url = https://github.com/STMicroelectronics/cmsis_device_l5.git
+	branch = master
+[submodule "STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/STM32L552E-EV"]
+	path = STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/STM32L552E-EV
+	url = https://github.com/STMicroelectronics/stm32l552e-ev.git
+	branch = main
+[submodule "STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/Components/mx25lm51245g"]
+	path = STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/Components/mx25lm51245g
+	url = https://github.com/STMicroelectronics/stm32-mx25lm51245g.git
+	branch = main
+[submodule "STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/Components/iss66wvh8m8"]
+	path = STM32L5x_boards/MX25LM51245G_STM32L552E-EVAL/Drivers/BSP/Components/iss66wvh8m8
+	url = https://github.com/STMicroelectronics/stm32-iss66wvh8m8.git
+	branch = main
+[submodule "STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/STM32F4xx_HAL_Driver"]
+	path = STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/STM32F4xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32f4xx_hal_driver.git
+	branch = master
+[submodule "STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx"]
+	path = STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx
+	url = https://github.com/STMicroelectronics/cmsis_device_f4.git
+	branch = master
+[submodule "STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/BSP/STM324x9I_EVAL"]
+	path = STM32F4x_boards/M29W128GL_STM324x9-EVAL/Drivers/BSP/STM324x9I_EVAL
+	url = https://github.com/STMicroelectronics/stm324x9i-eval.git
+	branch = main
+[submodule "STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/STM32F4xx_HAL_Driver"]
+	path = STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/STM32F4xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32f4xx_hal_driver.git
+	branch = master
+[submodule "STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx"]
+	path = STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx
+	url = https://github.com/STMicroelectronics/cmsis_device_f4.git
+	branch = master
+[submodule "STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/STM32469I_EVAL"]
+	path = STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/STM32469I_EVAL
+	url = https://github.com/STMicroelectronics/stm32469i-eval.git
+	branch = main
+[submodule "STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/Components/n25q512a"]
+	path = STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/Components/n25q512a
+	url = https://github.com/STMicroelectronics/stm32-n25q512a.git
+	branch = main
+[submodule "STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/Components/s25fl512s"]
+	path = STM32F4x_boards/MT25QL512A_STM32469I-EVAL/Drivers/BSP/Components/s25fl512s
+	url = https://github.com/STMicroelectronics/stm32-s25fl512s.git
+	branch = main
+[submodule "STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/STM32F4xx_HAL_Driver"]
+	path = STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/STM32F4xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32f4xx_hal_driver.git
+	branch = master
+[submodule "STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx"]
+	path = STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/CMSIS/Device/ST/STM32F4xx
+	url = https://github.com/STMicroelectronics/cmsis_device_f4.git
+	branch = master
+[submodule "STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/BSP/STM32469I-EVAL"]
+	path = STM32F4x_boards/M29EWLA_STM32469I-EVAL/Drivers/BSP/STM32469I-EVAL
+	url = https://github.com/STMicroelectronics/stm32469i-eval.git
+	branch = main
+[submodule "STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/STM32F7xx_HAL_Driver"]
+	path = STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/STM32F7xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32f7xx_hal_driver.git
+	branch = master
+[submodule "STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/CMSIS/Device/ST/STM32F7xx"]
+	path = STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/CMSIS/Device/ST/STM32F7xx
+	url = https://github.com/STMicroelectronics/cmsis_device_f7.git
+	branch = master
+[submodule "STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/BSP/STM32F769I_EVAL"]
+	path = STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/BSP/STM32F769I_EVAL
+	url = https://github.com/STMicroelectronics/stm32f769i-eval.git
+	branch = main
+[submodule "STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/BSP/Components/n25q512a"]
+	path = STM32F7x_boards/MT25QL512A_STM32F769I-EVAL/Drivers/BSP/Components/n25q512a
+	url = https://github.com/STMicroelectronics/stm32-n25q512a.git
+	branch = main
+[submodule "STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/STM32WBxx_HAL_Driver"]
+	path = STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/STM32WBxx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32wbxx_hal_driver.git
+	branch = master
+[submodule "STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/CMSIS/Device/ST/STM32WBxx"]
+	path = STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/CMSIS/Device/ST/STM32WBxx
+	url = https://github.com/STMicroelectronics/cmsis_device_wb.git
+	branch = master
+[submodule "STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/BSP/STM32WB5MM-DK"]
+	path = STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/BSP/STM32WB5MM-DK
+	url = https://github.com/STMicroelectronics/stm32wb5mm-dk.git
+	branch = main
+[submodule "STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/BSP/Components/s25fl128s"]
+	path = STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/BSP/Components/s25fl128s
+	url = https://github.com/STMicroelectronics/stm32-s25fl128s.git
+	branch = main

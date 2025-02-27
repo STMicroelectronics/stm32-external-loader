@@ -8,7 +8,7 @@ Builds `STM32H7A3ZIT6Q_MT25TL256.stldr`
 - supports 133MHZ STR mode 90MHz DTR mode for respective 133MiB/s and 180MiB/s
 
 ## STM32H7A3ZIT6Q
-- OctoSPI configurad as dual-quad (odd bytes are stored in 1 die, even bytes in the other die)
+- OctoSPI configured as dual-quad (odd bytes are stored in 1 die, even bytes in the other die)
 - In DTR mode quarter cycle delay is used
 - In STR mode half cycle delay is used
 - MCU @ 270MHz, FLASH @ 90MHz

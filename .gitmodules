@@ -110,3 +110,19 @@
 	path = STM32WBx_boards/S25FL128S_STM32WB5MM-DK/Drivers/BSP/Components/s25fl128s
 	url = https://github.com/STMicroelectronics/stm32-s25fl128s.git
 	branch = main
+[submodule "STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/STM32H5xx_HAL_Driver"]
+	path = STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/STM32H5xx_HAL_Driver
+	url = https://github.com/STMicroelectronics/stm32h5xx-hal-driver.git
+	branch = main
+[submodule "STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/CMSIS/Device/ST/STM32H5xx"]
+	path = STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/CMSIS/Device/ST/STM32H5xx
+	url = https://github.com/STMicroelectronics/cmsis-device-h5.git
+	branch = main
+[submodule "STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/BSP/Components/mx25lm51245g"]
+	path = STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/BSP/Components/mx25lm51245g
+	url = https://github.com/STMicroelectronics/stm32-mx25lm51245g.git
+	branch = main
+[submodule "STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/BSP/STM32H573I-DK"]
+	path = STM32H5x_boards/MX25LM51245G_STM32H573I-DK/Drivers/BSP/STM32H573I-DK
+	url = https://github.com/STMicroelectronics/stm32h573i-discovery-bsp.git
+	branch = main

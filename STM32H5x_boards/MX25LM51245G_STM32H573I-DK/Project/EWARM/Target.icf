@@ -1,0 +1,33 @@
+/* Define symbols for the start and end of the RAM region */
+define symbol __ICFEDIT_region_RAM_start__ = 0x20000004;
+define symbol __ICFEDIT_region_RAM_end__   = 0x2000FFF4;
+
+/* Export the end symbol for use in other modules */
+export symbol __ICFEDIT_region_RAM_end__;
+
+/* Define the memory space with a size of 4GB */
+define memory mem with size = 4G;
+
+/* Define the RAM region within the memory space */
+define region RAM_region = mem:[from __ICFEDIT_region_RAM_start__ to __ICFEDIT_region_RAM_end__];
+
+/* Define an additional region for information storage */
+define region Info = mem:[from 0 to 0x100];
+
+/* Define a block for RAM with a fixed order of sections */
+define block RAM_BLOCK with fixed order { readonly code, readonly data, readwrite };
+
+/* Define a block for Info with a fixed order of sections */
+define block Info_BLOCK with fixed order { readonly data object Dev_Inf.o };
+
+/* Place the RAM block in the RAM region */
+place in RAM_region { block RAM_BLOCK };
+
+/* Place zero-initialized data in the RAM region */
+place in RAM_region { zi };
+
+/* Place the Info block in the Info region */
+place in Info { block Info_BLOCK };
+
+/* Do not initialize certain sections */
+do not initialize { section .info, readwrite };
